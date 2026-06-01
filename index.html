@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minimalist Travel Budget Pro v7.4 (THB/HKD Dual)</title>
+    <title>Minimalist Travel Budget Pro v7.5</title>
     
+    <!-- PWA 核心設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Thai Budget">
@@ -22,8 +23,6 @@
             --grey: #e1e4e8;       
             
             /* Highlight 顏色背景 */
-            --hl-hkd: #f4f6f7;     /* 港幣直入專用：灰色 */
-            --hl-hkd-txt: #7f8c8d;
             --hl-flights: #e8f4fd; 
             --hl-flights-txt: #2980b9;
             --hl-stay: #fef5e7;    
@@ -255,6 +254,7 @@
 </head>
 <body>
 
+    <!-- 1. Header, Total Spend & Itemized Dashboard -->
     <div class="card top-sticky-card">
         <div class="dashboard-layout">
             <div class="total-box">
@@ -266,57 +266,53 @@
         </div>
     </div>
 
+    <!-- 匯率即時設定欄位 -->
     <div class="fx-rate-box">
         <span>Exchange Rate: 1 THB =</span>
         <input type="number" id="fx-rate" value="0.22" step="0.001" onchange="handleRateChange()" inputmode="decimal">
         <span>HKD</span>
     </div>
 
+    <!-- 2. Entry & Transaction Form -->
     <div class="card">
         <h2 id="form-title">Add Travel Record</h2>
         
         <div id="edit-indicator" class="edit-mode-indicator">✏️ Editing trip record... (will overwrite on save)</div>
         
         <input type="number" id="amount" placeholder="Enter amount..." inputmode="decimal">
-        <input type="text" id="note" placeholder="Enter details (e.g., Bought in HKD, Massage)">
+        <input type="text" id="note" placeholder="Enter details (e.g., Cathay Pacific, Hotel Transfer)">
         
+        <!-- 旅遊日期區塊 -->
         <div class="edit-date-wrapper" id="date-field-block">
             <label for="edit-date">Transaction Date:</label>
             <input type="date" id="edit-date">
         </div>
         
+        <!-- Category Picker Selection -->
         <div class="category-picker" id="category-picker"></div>
         
         <button class="btn-save" id="btn-save-main" onclick="handleSubmit()">Save Record</button>
     </div>
 
+    <!-- 3. Historical Logs Display -->
     <div class="card">
         <h2>Trip Expense History</h2>
         <div class="list-container" id="history-list"></div>
     </div>
 
+    <!-- 4. Data Export & Backup Section -->
     <div style="padding: 0 2px;">
         <button class="btn-backup" onclick="exportToCSV()">Backup Trip Data (Excel CSV)</button>
     </div>
 
     <script>
-        /***************************************************************************
-         * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
-         * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
-         * 2. 換預設匯率 -> 修改下方的 globalFxRate 數值
-         * 3. 換 HTML 版面符號 -> 請到上方 HTML 代碼中，搜尋「฿」並全部替換掉
-         * 4. 雙幣直入標籤說明 -> 當分類名稱結尾含有「(HKD)」時，
-         * 程式會聰明地把輸入的金額直接當成港幣處理，並自動反推外幣。
-         ***************************************************************************/
-
-        const DATA_FILE = "travel_thb_records_v2.json"; // 升級 v2 檔名
+        const DATA_FILE = "travel_thb_records_v2.json";
+        let globalFxRate = 0.22;
         
-        let globalFxRate = 0.22; // 預設 1 泰銖 = 0.22 港幣
-        
-        // 旅遊專屬八大分類（內含兩個直入港幣分類）
+        // 分類乾淨化，不帶任何 (HKD) 註記
         let categories = [
             "✈️ Flights", 
-            "💳 Stay", 
+            "🏨 Stay", 
             "🍱 Dining", 
             "🛍️ Shopping", 
             "🎟️ Tickets", 
@@ -327,17 +323,15 @@
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // 核心設定：直接定義哪幾個分類屬於「港幣直入」
+        function checkIsHkdMode(catName) {
+            return catName === "✈️ Flights" || catName === "🏨 Stay";
+        }
 
-        // 初始化
         async function init() {
             if(categories.length > 0) selectedCategory = categories[0];
-            
             setTodayDate();
             
-            // 監聽輸入框，根據選到的分類動態更換 Placeholder 提示字
-            document.getElementById('amount').placeholder = `Enter amount in HKD`;
-
             const savedRate = localStorage.getItem('thb_fx_rate');
             if(savedRate) {
                 globalFxRate = parseFloat(savedRate);
@@ -351,10 +345,7 @@
 
         function setTodayDate() {
             const now = new Date();
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            const dd = String(now.getDate()).padStart(2, '0');
-            document.getElementById('edit-date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('edit-date').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         }
 
         function handleRateChange() {
@@ -374,7 +365,6 @@
                 const text = await file.text();
                 records = text ? JSON.parse(text) : [];
             } catch (e) {
-                console.error("OPFS 讀取失敗:", e);
                 records = JSON.parse(localStorage.getItem('thb_rec_v2')) || [];
             }
         }
@@ -387,7 +377,6 @@
                 await writable.write(JSON.stringify(records));
                 await writable.close();
             } catch (e) {
-                console.error("OPFS 寫入失敗:", e);
                 localStorage.setItem('thb_rec_v2', JSON.stringify(records));
             }
         }
@@ -399,8 +388,8 @@
             categories.forEach(cat => {
                 const isActive = (cat === selectedCategory) ? 'active' : '';
                 const parts = cat.split(' ');
-                const icon = parts.length > 1 ? parts[0] : '📝';
-                const label = parts.length > 1 ? parts.slice(1).join(' ') : cat;
+                const icon = parts[0];
+                const label = parts.slice(1).join(' ');
 
                 picker.innerHTML += `
                     <button type="button" class="category-btn ${isActive}" onclick="selectCategory('${cat}', this)">
@@ -409,16 +398,21 @@
                     </button>
                 `;
             });
+            
+            // 初始化輸入框 Placeholder
+            updatePlaceholder(selectedCategory);
         }
 
         function selectCategory(cat, btn) {
             selectedCategory = cat; 
             document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); 
             btn.classList.add('active'); 
+            updatePlaceholder(cat);
+        }
 
-            // 動態更換輸入框的貨幣單位提示
+        function updatePlaceholder(cat) {
             const amtInput = document.getElementById('amount');
-            if (cat.includes("(HKD)")) {
+            if (checkIsHkdMode(cat)) {
                 amtInput.placeholder = "Enter amount in HKD (港幣直入)";
             } else {
                 amtInput.placeholder = "Enter amount in THB (泰銖 ฿)";
@@ -435,18 +429,13 @@
 
             if (isNaN(inputAmount) || inputAmount <= 0) return alert('Please enter a valid amount!');
             
-            let targetDate = dateInput.value;
-            if(!targetDate) {
-                const now = new Date();
-                targetDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            }
+            let targetDate = dateInput.value || `${new Date().getFullYear()}-06-01`;
 
-            // 新版資料核心：如果使用者選取的是港幣 Direct，存檔時將金額欄位轉換為對應外幣儲存，以便數據一致
             let finalThbAmount = inputAmount;
-            let isHkdMode = selectedCategory.includes("(HKD)");
+            let isHkdMode = checkIsHkdMode(selectedCategory);
 
             if (isHkdMode) {
-                // 如果是直接輸入港幣（如機票付 3000），反向推算回泰銖儲存 = 3000 / 0.22
+                // 港幣直入：存進去的泰銖 = 港幣 / 匯率
                 finalThbAmount = Math.round(inputAmount / globalFxRate);
             }
 
@@ -457,11 +446,8 @@
                     records[recordIndex].category = selectedCategory;
                     records[recordIndex].note = note; 
                     records[recordIndex].date = targetDate;
-                    records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; // 紀錄原始港幣
+                    records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; 
                 }
-                
-                records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-                
                 editingRecordId = null;
                 document.getElementById('form-title').innerText = "Add Travel Record";
                 document.getElementById('btn-save-main').innerText = "Save Record";
@@ -477,9 +463,9 @@
                     wasHkdInput: isHkdMode ? inputAmount : null 
                 };
                 records.unshift(newRecord);
-                records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
             }
 
+            records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
             await saveRecords();     
             amountInput.value = '';  
             noteInput.value = '';  
@@ -493,7 +479,6 @@
 
             editingRecordId = id; 
             
-            // 如果當初是用港幣直入的，點擊編輯時還原成當初輸入的港幣數字
             if (record.wasHkdInput) {
                 document.getElementById('amount').value = record.wasHkdInput;
             } else {
@@ -501,7 +486,7 @@
             }
             
             document.getElementById('note').value = record.note || ''; 
-            document.getElementById('edit-date').value = ensureISODate(record.date); 
+            document.getElementById('edit-date').value = record.date; 
             selectedCategory = record.category;
             
             document.getElementById('form-title').innerText = "Edit Trip Record";
@@ -522,22 +507,12 @@
         }
 
         function getHighlightStyle(category) {
-            const catStr = String(category);
-            if (catStr.includes("(HKD)")) {
-                return "background-color: var(--hl-hkd); color: var(--hl-hkd-txt);";
-            } else if (catStr.includes("Flights")) {
-                return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";
-            } else if (catStr.includes("Stay")) {
-                return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";
-            } else if (catStr.includes("Dining")) {
-                return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
-            } else if (catStr.includes("Shopping")) {
-                return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
-            } else if (catStr.includes("Tickets")) {
-                return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
-            } else {
-                return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
-            }
+            if (category.includes("Flights")) return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";
+            if (category.includes("Stay")) return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";
+            if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
+            if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
+            if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
+            return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
         }
 
         function renderRecords() {
@@ -551,7 +526,6 @@
             
             let totalThb = 0;
             let totalHkd = 0;
-            
             let catSumsThb = {};
             categories.forEach(cat => { catSumsThb[cat] = 0; });
 
@@ -559,14 +533,8 @@
                 listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">No trip transactions yet.</div>`;
                 totalContainer.innerText = '0';
                 totalHkdContainer.innerText = '0';
-                
                 categories.forEach(cat => {
-                    const cleanLabel = cat.split(' ').slice(1).join(' ') || cat;
-                    catTotalsContainer.innerHTML += `
-                        <div class="cat-total-item">
-                            <span class="cat-name">${cleanLabel}</span>
-                            <span class="cat-num">฿0</span>
-                        </div>`;
+                    catTotalsContainer.innerHTML += `<div class="cat-total-item"><span class="cat-name">${cat.split(' ').slice(1).join(' ')}</span><span class="cat-num">฿0</span></div>`;
                 });
                 return;
             }
@@ -575,11 +543,11 @@
                 let currentItemHkd = 0;
                 let currentItemThb = r.amount;
 
-                // 智慧雙向算式判斷
-                if (r.category.includes("(HKD)") && r.wasHkdInput) {
-                    currentItemHkd = r.wasHkdInput; // 港幣直取當初輸入值
+                // 檢查是否為港幣直入項目
+                if (checkIsHkdMode(r.category) && r.wasHkdInput) {
+                    currentItemHkd = r.wasHkdInput; 
                 } else {
-                    currentItemHkd = Math.round(r.amount * globalFxRate); // 泰銖轉港幣
+                    currentItemHkd = Math.round(r.amount * globalFxRate); 
                 }
 
                 totalThb += currentItemThb;
@@ -591,7 +559,7 @@
 
                 const noteHTML = r.note ? `<span class="note-text">${r.note}</span>` : '';
                 const colorStyle = getHighlightStyle(r.category);
-                const displayCategoryLabel = r.category.split(' ').slice(1).join(' ') || r.category;
+                const displayCategoryLabel = r.category.split(' ').slice(1).join(' ');
 
                 listContainer.innerHTML += `
                     <div class="list-item">
@@ -614,59 +582,35 @@
                 `;
             });
 
-            // 頂部看板更新
             totalContainer.innerText = totalThb.toLocaleString();
             totalHkdContainer.innerText = totalHkd.toLocaleString();
 
-            // 渲染右側分類統計
             Object.keys(catSumsThb).forEach(cat => {
-                const cleanLabel = cat.split(' ').slice(1).join(' ') || cat;
                 catTotalsContainer.innerHTML += `
                     <div class="cat-total-item">
-                        <span class="cat-name">${cleanLabel}</span>
+                        <span class="cat-name">${cat.split(' ').slice(1).join(' ')}</span>
                         <span class="cat-num">฿${catSumsThb[cat].toLocaleString()}</span>
                     </div>
                 `;
             });
         }
 
-        function ensureISODate(dateStr) {
-            if (dateStr && dateStr.includes('-') && dateStr.split('-').length === 3) {
-                return dateStr;
-            }
-            try {
-                const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return "2026-06-01"; 
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                return `${yyyy}-${mm}-${dd}`;
-            } catch(e) {
-                return "2026-06-01";
-            }
-        }
-
         function exportToCSV() {
             if (records.length === 0) return alert("There is no data to export yet!");
-            
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
             let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; 
             
             let lastIsoDate = "";
-            let dayTotalThb = 0;
-            let dayTotalHkd = 0;
-            let tripTotalThb = 0;
-            let tripTotalHkd = 0;
+            let dayTotalThb = 0, dayTotalHkd = 0, tripTotalThb = 0, tripTotalHkd = 0;
 
             for (let i = 0; i < sortedRecords.length; i++) {
                 const r = sortedRecords[i];
                 const nextRecord = sortedRecords[i + 1];
 
-                const currentIsoDate = ensureISODate(r.date);
-                let nextIsoDate = null;
-                if (nextRecord) nextIsoDate = ensureISODate(nextRecord.date);
+                const currentIsoDate = r.date;
+                let nextIsoDate = nextRecord ? nextRecord.date : null;
 
-                const rawCategory = r.category.split(' ').slice(1).join(' ') || r.category;
+                const rawCategory = r.category.split(' ').slice(1).join(' ');
                 const category = rawCategory.includes(',') ? `"${rawCategory}"` : rawCategory;
                 const note = r.note && r.note.includes(',') ? `"${r.note}"` : (r.note || '');
                 
@@ -678,19 +622,13 @@
                 
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
-                dayTotalThb += currentItemThb;
-                dayTotalHkd += currentItemHkd;
-                tripTotalThb += currentItemThb;
-                tripTotalHkd += currentItemHkd;
+                dayTotalThb += currentItemThb; dayTotalHkd += currentItemHkd;
+                tripTotalThb += currentItemThb; tripTotalHkd += currentItemHkd;
 
-                // 當日小計
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
                     csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
-                    dayTotalThb = 0; 
-                    dayTotalHkd = 0;
+                    dayTotalThb = 0; dayTotalHkd = 0;
                 }
-
-                // 全行程總計
                 if (!nextRecord) {
                     csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
                 }
@@ -700,7 +638,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", `Trip_Budget_Report_DualCurrency_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `Trip_Budget_Report_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
