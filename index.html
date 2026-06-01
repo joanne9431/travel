@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minimalist Travel Budget Pro v7.8</title>
+    <title>Minimalist Travel Budget Pro v7.9</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -256,7 +256,7 @@
     <div class="card top-sticky-card">
         <div class="dashboard-layout">
             <div class="total-box">
-                <h2>總行程花費 (Total)</h2>
+                <h2>Total Expenses</h2>
                 <div class="total-amount">฿<span id="total">0</span></div>
                 <div class="total-hkd-sub">≈ HK$ <span id="total-hkd">0</span></div>
             </div>
@@ -265,36 +265,36 @@
     </div>
 
     <div class="fx-rate-box">
-        <span>今日匯率設定: 1 泰銖 (THB) =</span>
+        <span>Exchange Rate: 1 THB =</span>
         <input type="number" id="fx-rate" value="0.22" step="0.001" onchange="handleRateChange()" inputmode="decimal">
-        <span>港幣 (HKD)</span>
+        <span>HKD</span>
     </div>
 
     <div class="card">
-        <h2 id="form-title">新增記帳紀錄</h2>
+        <h2 id="form-title">Add Travel Record</h2>
         
-        <div id="edit-indicator" class="edit-mode-indicator">✏️ 正在編輯此筆紀錄... (儲存後將覆蓋舊資料)</div>
+        <div id="edit-indicator" class="edit-mode-indicator">✏️ Editing trip record... (will overwrite on save)</div>
         
-        <input type="number" id="amount" placeholder="請輸入金額..." inputmode="decimal">
-        <input type="text" id="note" placeholder="請輸入備註明細 (例如：國泰航空、飯店接駁)">
+        <input type="number" id="amount" placeholder="Enter amount..." inputmode="decimal">
+        <input type="text" id="note" placeholder="Enter details (e.g., Cathay Pacific, Hotel Transfer)">
         
         <div class="edit-date-wrapper" id="date-field-block">
-            <label for="edit-date">交易日期 (Transaction Date):</label>
+            <label for="edit-date">Transaction Date:</label>
             <input type="date" id="edit-date">
         </div>
         
         <div class="category-picker" id="category-picker"></div>
         
-        <button class="btn-save" id="btn-save-main" onclick="handleSubmit()">儲存此筆紀錄</button>
+        <button class="btn-save" id="btn-save-main" onclick="handleSubmit()">Save Record</button>
     </div>
 
     <div class="card">
-        <h2>歷史消費明細 (History)</h2>
+        <h2>Trip Expense History</h2>
         <div class="list-container" id="history-list"></div>
     </div>
 
     <div style="padding: 0 2px;">
-        <button class="btn-backup" onclick="exportToCSV()">匯出旅遊帳目備份 (Excel CSV)</button>
+        <button class="btn-backup" onclick="exportToCSV()">Backup Trip Data (Excel CSV)</button>
     </div>
 
     <script>
@@ -454,8 +454,8 @@
                     records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; 
                 }
                 editingRecordId = null;
-                document.getElementById('form-title').innerText = "新增記帳紀錄";
-                document.getElementById('btn-save-main').innerText = "儲存此筆紀錄";
+                document.getElementById('form-title').innerText = "Add Travel Record";
+                document.getElementById('btn-save-main').innerText = "Save Record";
                 document.getElementById('btn-save-main').style.backgroundColor = "var(--primary)";
                 document.getElementById('edit-indicator').style.display = "none"; 
             } else {
@@ -495,8 +495,8 @@
             document.getElementById('edit-date').value = record.date; 
             selectedCategory = record.category;
             
-            document.getElementById('form-title').innerText = "修改現有紀錄";
-            document.getElementById('btn-save-main').innerText = "更新紀錄資料";
+            document.getElementById('form-title').innerText = "Edit Trip Record";
+            document.getElementById('btn-save-main').innerText = "Update Record";
             document.getElementById('btn-save-main').style.backgroundColor = "var(--warning)";
             document.getElementById('edit-indicator').style.display = "block";
             
@@ -536,7 +536,7 @@
             categories.forEach(cat => { catSumsThb[cat] = 0; });
 
             if (records.length === 0) {
-                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">目前尚無任何記帳數據。</div>`;
+                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">No trip transactions yet.</div>`;
                 totalContainer.innerText = '0';
                 totalHkdContainer.innerText = '0';
                 categories.forEach(cat => {
@@ -601,7 +601,7 @@
             });
         }
 
-        // CSV 智慧分流匯出邏輯：Flights 和 Stay 獨立計算，不計入每日 Daily Total
+        // CSV 智慧分流匯出邏輯：Flights 和 Stay 已完全被剔除於 Daily Total 的每日小計外
         function exportToCSV() {
             if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
@@ -643,7 +643,10 @@
 
                 // 觸發當日小計 (當日期改變，或到最後一筆交易時)
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
-                    csvContent += `,Daily Total (Excl. Flights/Stay),฿${dayTotalThb},HK$${dayTotalHkd},\n`;
+                    // 如果當天扣除 Flights/Stay 之後，一般消費累積大於 0，才打印 Daily Total
+                    if (dayTotalThb > 0) {
+                        csvContent += `,Daily Total (Excl. Flights/Stay),฿${dayTotalThb},HK$${dayTotalHkd},\n`;
+                    }
                     dayTotalThb = 0; 
                     dayTotalHkd = 0;
                 }
@@ -658,7 +661,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", `泰國旅遊記帳備份_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `Trip_Budget_Report_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
