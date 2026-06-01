@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minimalist Travel Budget Pro v7.9</title>
+    <title>Minimalist Travel Budget Pro v8.0</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -273,10 +273,10 @@
     <div class="card">
         <h2 id="form-title">Add Travel Record</h2>
         
-        <div id="edit-indicator" class="edit-mode-indicator">✏️ Editing trip record... (will overwrite on save)</div>
+        <div id="edit-indicator" class="edit-mode-indicator">✏️ Editing trip record...</div>
         
         <input type="number" id="amount" placeholder="Enter amount..." inputmode="decimal">
-        <input type="text" id="note" placeholder="Enter details (e.g., Cathay Pacific, Hotel Transfer)">
+        <input type="text" id="note" placeholder="Enter details">
         
         <div class="edit-date-wrapper" id="date-field-block">
             <label for="edit-date">Transaction Date:</label>
@@ -294,7 +294,7 @@
     </div>
 
     <div style="padding: 0 2px;">
-        <button class="btn-backup" onclick="exportToCSV()">Backup Trip Data (Excel CSV)</button>
+        <button class="btn-backup" onclick="exportToCSV()">Backup Trip Data</button>
     </div>
 
     <script>
@@ -403,7 +403,7 @@
                 `;
             });
             
-            // 初始化輸入框的中文提示資訊
+            // 初始化輸入框的提示資訊（改為純英文，移除括號）
             updatePlaceholder(selectedCategory);
         }
 
@@ -414,13 +414,13 @@
             updatePlaceholder(cat);
         }
 
-        // 核心提示分流：切換不同分類時，動態更新輸入框的中文提示，防止港幣與泰銖輸入混淆
+        // 動態更新輸入框提示：完全換為英文，移除所有中文與括號文字
         function updatePlaceholder(cat) {
             const amtInput = document.getElementById('amount');
             if (checkIsHkdMode(cat)) {
-                amtInput.placeholder = "請輸入港幣金額 [港幣直入系統自動換算]";
+                amtInput.placeholder = "Enter amount in HKD";
             } else {
-                amtInput.placeholder = "請輸入泰銖金額 ฿ [當地消費項目]";
+                amtInput.placeholder = "Enter amount in THB";
             }
         }
 
@@ -601,7 +601,7 @@
             });
         }
 
-        // CSV 智慧分流匯出邏輯：Flights 和 Stay 已完全被剔除於 Daily Total 的每日小計外
+        // CSV 智慧匯出邏輯：Flights 和 Stay 不計算且不生成 Daily Total 行
         function exportToCSV() {
             if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
@@ -645,7 +645,7 @@
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
                     // 如果當天扣除 Flights/Stay 之後，一般消費累積大於 0，才打印 Daily Total
                     if (dayTotalThb > 0) {
-                        csvContent += `,Daily Total (Excl. Flights/Stay),฿${dayTotalThb},HK$${dayTotalHkd},\n`;
+                        csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
                     }
                     dayTotalThb = 0; 
                     dayTotalHkd = 0;
@@ -653,7 +653,7 @@
                 
                 // 行程完結：打印大總計
                 if (!nextRecord) {
-                    csvContent += `,Trip Total (All Included),฿${tripTotalThb},HK$${tripTotalHkd},\n`;
+                    csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
                 }
             }
             
