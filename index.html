@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minimalist Travel Budget Pro v7.5</title>
+    <title>Minimalist Travel Budget Pro v7.8</title>
     
-    <!-- PWA 核心設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Thai Budget">
@@ -254,11 +253,10 @@
 </head>
 <body>
 
-    <!-- 1. Header, Total Spend & Itemized Dashboard -->
     <div class="card top-sticky-card">
         <div class="dashboard-layout">
             <div class="total-box">
-                <h2>Total Expenses</h2>
+                <h2>總行程花費 (Total)</h2>
                 <div class="total-amount">฿<span id="total">0</span></div>
                 <div class="total-hkd-sub">≈ HK$ <span id="total-hkd">0</span></div>
             </div>
@@ -266,50 +264,55 @@
         </div>
     </div>
 
-    <!-- 匯率即時設定欄位 -->
     <div class="fx-rate-box">
-        <span>Exchange Rate: 1 THB =</span>
+        <span>今日匯率設定: 1 泰銖 (THB) =</span>
         <input type="number" id="fx-rate" value="0.22" step="0.001" onchange="handleRateChange()" inputmode="decimal">
-        <span>HKD</span>
+        <span>港幣 (HKD)</span>
     </div>
 
-    <!-- 2. Entry & Transaction Form -->
     <div class="card">
-        <h2 id="form-title">Add Travel Record</h2>
+        <h2 id="form-title">新增記帳紀錄</h2>
         
-        <div id="edit-indicator" class="edit-mode-indicator">✏️ Editing trip record... (will overwrite on save)</div>
+        <div id="edit-indicator" class="edit-mode-indicator">✏️ 正在編輯此筆紀錄... (儲存後將覆蓋舊資料)</div>
         
-        <input type="number" id="amount" placeholder="Enter amount..." inputmode="decimal">
-        <input type="text" id="note" placeholder="Enter details (e.g., Cathay Pacific, Hotel Transfer)">
+        <input type="number" id="amount" placeholder="請輸入金額..." inputmode="decimal">
+        <input type="text" id="note" placeholder="請輸入備註明細 (例如：國泰航空、飯店接駁)">
         
-        <!-- 旅遊日期區塊 -->
         <div class="edit-date-wrapper" id="date-field-block">
-            <label for="edit-date">Transaction Date:</label>
+            <label for="edit-date">交易日期 (Transaction Date):</label>
             <input type="date" id="edit-date">
         </div>
         
-        <!-- Category Picker Selection -->
         <div class="category-picker" id="category-picker"></div>
         
-        <button class="btn-save" id="btn-save-main" onclick="handleSubmit()">Save Record</button>
+        <button class="btn-save" id="btn-save-main" onclick="handleSubmit()">儲存此筆紀錄</button>
     </div>
 
-    <!-- 3. Historical Logs Display -->
     <div class="card">
-        <h2>Trip Expense History</h2>
+        <h2>歷史消費明細 (History)</h2>
         <div class="list-container" id="history-list"></div>
     </div>
 
-    <!-- 4. Data Export & Backup Section -->
     <div style="padding: 0 2px;">
-        <button class="btn-backup" onclick="exportToCSV()">Backup Trip Data (Excel CSV)</button>
+        <button class="btn-backup" onclick="exportToCSV()">匯出旅遊帳目備份 (Excel CSV)</button>
     </div>
 
     <script>
+        /***************************************************************************
+         * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
+         * * 如果這份網頁以後要改成「歐元版」或「日幣版」，請直接搜尋並修改以下對應參數：
+         * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
+         * 2. 換預設匯率 -> 修改下方的 globalFxRate 數值
+         * 3. 換 HTML 版面符號 -> 請到上方 HTML 代碼中，搜尋「฿」並全部替換掉（如改為 €, $, ₩, ¥）
+         * 4. 特別注意 (日幣專用) -> 本程式的算法是 [外幣 * 匯率 = 港幣] (適合泰銖、美金、歐元等)。
+         * 如果你要換成「日圓」，請到下方的 renderRecords() 與 exportToCSV() 內，
+         * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
+         ***************************************************************************/
+
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
-        // 分類乾淨化，不帶任何 (HKD) 註記
+        // 分類乾淨化，按鈕上不帶任何金額與幣別註記
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
@@ -323,7 +326,7 @@
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        // 核心設定：直接定義哪幾個分類屬於「港幣直入」
+        // 核心設定：直接精準定義哪幾個分類屬於「港幣直入」模式
         function checkIsHkdMode(catName) {
             return catName === "✈️ Flights" || catName === "🏨 Stay";
         }
@@ -354,6 +357,7 @@
             if(isNaN(val) || val <= 0) val = 0.22;
             globalFxRate = val;
             localStorage.setItem('thb_fx_rate', globalFxRate);
+            alert(`匯率已成功修改！目前設定為 1 THB = ${globalFxRate} HKD`);
             renderRecords(); 
         }
 
@@ -399,7 +403,7 @@
                 `;
             });
             
-            // 初始化輸入框 Placeholder
+            // 初始化輸入框的中文提示資訊
             updatePlaceholder(selectedCategory);
         }
 
@@ -410,12 +414,13 @@
             updatePlaceholder(cat);
         }
 
+        // 核心提示分流：切換不同分類時，動態更新輸入框的中文提示，防止港幣與泰銖輸入混淆
         function updatePlaceholder(cat) {
             const amtInput = document.getElementById('amount');
             if (checkIsHkdMode(cat)) {
-                amtInput.placeholder = "Enter amount in HKD (港幣直入)";
+                amtInput.placeholder = "請輸入港幣金額 [港幣直入系統自動換算]";
             } else {
-                amtInput.placeholder = "Enter amount in THB (泰銖 ฿)";
+                amtInput.placeholder = "請輸入泰銖金額 ฿ [當地消費項目]";
             }
         }
 
@@ -427,7 +432,7 @@
             let inputAmount = parseFloat(amountInput.value);
             const note = noteInput.value.trim(); 
 
-            if (isNaN(inputAmount) || inputAmount <= 0) return alert('Please enter a valid amount!');
+            if (isNaN(inputAmount) || inputAmount <= 0) return alert('請輸入正確且大於 0 的金額！');
             
             let targetDate = dateInput.value || `${new Date().getFullYear()}-06-01`;
 
@@ -435,7 +440,7 @@
             let isHkdMode = checkIsHkdMode(selectedCategory);
 
             if (isHkdMode) {
-                // 港幣直入：存進去的泰銖 = 港幣 / 匯率
+                // 港幣直入：系統自動判定將「輸入的港幣金額 / 當下匯率」精準換算為泰銖存入
                 finalThbAmount = Math.round(inputAmount / globalFxRate);
             }
 
@@ -449,8 +454,8 @@
                     records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; 
                 }
                 editingRecordId = null;
-                document.getElementById('form-title').innerText = "Add Travel Record";
-                document.getElementById('btn-save-main').innerText = "Save Record";
+                document.getElementById('form-title').innerText = "新增記帳紀錄";
+                document.getElementById('btn-save-main').innerText = "儲存此筆紀錄";
                 document.getElementById('btn-save-main').style.backgroundColor = "var(--primary)";
                 document.getElementById('edit-indicator').style.display = "none"; 
             } else {
@@ -479,6 +484,7 @@
 
             editingRecordId = id; 
             
+            // 編輯防錯：如果是港幣直入項目，編輯時帶回原本輸入的港幣金額，其餘帶回泰銖
             if (record.wasHkdInput) {
                 document.getElementById('amount').value = record.wasHkdInput;
             } else {
@@ -489,8 +495,8 @@
             document.getElementById('edit-date').value = record.date; 
             selectedCategory = record.category;
             
-            document.getElementById('form-title').innerText = "Edit Trip Record";
-            document.getElementById('btn-save-main').innerText = "Update Record";
+            document.getElementById('form-title').innerText = "修改現有紀錄";
+            document.getElementById('btn-save-main').innerText = "更新紀錄資料";
             document.getElementById('btn-save-main').style.backgroundColor = "var(--warning)";
             document.getElementById('edit-indicator').style.display = "block";
             
@@ -499,7 +505,7 @@
         }
 
         async function deleteRecord(id) {
-            if (confirm("Are you sure you want to delete this record?")) {
+            if (confirm("確認要刪除此筆記帳紀錄嗎？")) {
                 records = records.filter(r => r.id !== id);
                 await saveRecords(); 
                 renderRecords();     
@@ -530,7 +536,7 @@
             categories.forEach(cat => { catSumsThb[cat] = 0; });
 
             if (records.length === 0) {
-                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">No trip transactions yet.</div>`;
+                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">目前尚無任何記帳數據。</div>`;
                 totalContainer.innerText = '0';
                 totalHkdContainer.innerText = '0';
                 categories.forEach(cat => {
@@ -543,7 +549,7 @@
                 let currentItemHkd = 0;
                 let currentItemThb = r.amount;
 
-                // 檢查是否為港幣直入項目
+                // 檢查是否為港幣直入項目：歷史區精準顯示當初輸入的 HKD 金額，其餘日常消費由泰銖依最新匯率換算
                 if (checkIsHkdMode(r.category) && r.wasHkdInput) {
                     currentItemHkd = r.wasHkdInput; 
                 } else {
@@ -595,13 +601,15 @@
             });
         }
 
+        // CSV 智慧分流匯出邏輯：Flights 和 Stay 獨立計算，不計入每日 Daily Total
         function exportToCSV() {
-            if (records.length === 0) return alert("There is no data to export yet!");
+            if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
             let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; 
             
             let lastIsoDate = "";
-            let dayTotalThb = 0, dayTotalHkd = 0, tripTotalThb = 0, tripTotalHkd = 0;
+            let dayTotalThb = 0, dayTotalHkd = 0; // 每日小計（不包含港幣直入項目）
+            let tripTotalThb = 0, tripTotalHkd = 0; // 全行程總計
 
             for (let i = 0; i < sortedRecords.length; i++) {
                 const r = sortedRecords[i];
@@ -620,17 +628,29 @@
                 let displayDate = (currentIsoDate !== lastIsoDate) ? currentIsoDate : "";
                 if(displayDate) lastIsoDate = currentIsoDate;
                 
+                // 寫入一般交易行
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
-                dayTotalThb += currentItemThb; dayTotalHkd += currentItemHkd;
-                tripTotalThb += currentItemThb; tripTotalHkd += currentItemHkd;
-
-                if (!nextRecord || nextIsoDate !== currentIsoDate) {
-                    csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
-                    dayTotalThb = 0; dayTotalHkd = 0;
+                // 核心分流：機票、酒店分開歸類，不計入 Daily Total 的每日小計
+                if (!checkIsHkdMode(r.category)) {
+                    dayTotalThb += currentItemThb;
+                    dayTotalHkd += currentItemHkd;
                 }
+
+                // 總行程大花費依然會全部包含
+                tripTotalThb += currentItemThb;
+                tripTotalHkd += currentItemHkd;
+
+                // 觸發當日小計 (當日期改變，或到最後一筆交易時)
+                if (!nextRecord || nextIsoDate !== currentIsoDate) {
+                    csvContent += `,Daily Total (Excl. Flights/Stay),฿${dayTotalThb},HK$${dayTotalHkd},\n`;
+                    dayTotalThb = 0; 
+                    dayTotalHkd = 0;
+                }
+                
+                // 行程完結：打印大總計
                 if (!nextRecord) {
-                    csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
+                    csvContent += `,Trip Total (All Included),฿${tripTotalThb},HK$${tripTotalHkd},\n`;
                 }
             }
             
@@ -638,7 +658,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", `Trip_Budget_Report_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `泰國旅遊記帳備份_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
