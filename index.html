@@ -72,16 +72,16 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
         
         .total-box {
-            flex: 1.1;
-            padding-left: 10px; 
+            flex: 1; /* 微調縮小左側比例，讓右側方塊有更多空間向左延伸 */
+            padding-left: 6px; 
             text-align: left;
         }
         .total-amount { 
-            font-size: 1.8rem; 
+            font-size: 1.7rem; 
             font-weight: 900; 
             color: var(--primary); 
             margin-top: 2px;
@@ -89,22 +89,22 @@
             line-height: 1.1;
         }
         .total-hkd-sub {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: #888;
             font-weight: 600;
             margin-top: 2px;
         }
         
-        /* 修改此處：改為直向（由上至下）填滿兩行的 Grid 結構 */
+        /* 🛠️ 優化：增加 flex 佔比到 1.8 減少右邊空位，並將 gap 與內邊距微調，讓外觀更緊湊滿版 */
         .category-totals-box {
-            flex: 1.4;
+            flex: 1.8; 
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-auto-flow: column; /* 讓項目垂直由上至下排列，滿了才跳右邊一行 */
-            grid-template-rows: repeat(4, auto); /* 右邊最多 4 項，所以設為 4 列 */
-            gap: 5px 8px;
-            background: rgba(0, 0, 0, 0.02);
-            padding: 8px;
+            grid-auto-flow: column; 
+            grid-template-rows: repeat(4, auto); 
+            gap: 4px 10px;
+            background: rgba(0, 0, 0, 0.03);
+            padding: 8px 10px;
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.01);
         }
@@ -114,7 +114,7 @@
             flex-direction: column;
             font-size: 0.75rem;
             color: #555;
-            min-width: 0; /* 防止溢出 */
+            min-width: 0; 
         }
         .cat-total-item .cat-name {
             color: #888;
@@ -614,18 +614,12 @@
             totalContainer.innerText = totalThb.toLocaleString();
             totalHkdContainer.innerText = totalHkd.toLocaleString();
 
-            /***************************************************************************
-             * 🛠️ 【完美配對雙列版型】
-             * 為了確保左邊必為 3 格（Flights, Stay, Insurance），
-             * 右邊必為 4 格（Dining, Shopping, Tickets, Transport），
-             * 我們嚴格安排陣列順序，配合 grid-auto-flow: column 與 4 列限制，
-             * 自動產生完美左邊 3、右邊 4 的乾淨外觀。
-             ***************************************************************************/
+            // 完美配對雙列分流
             let dashboardDisplayOrder = [
                 "✈️ Flights",
                 "🏨 Stay",
                 "🛡️ Insurance",
-                "占位",            /* 讓左側第四列留空，保證完美的 3 - 4 分流 */
+                "占位",            
                 "🍱 Dining",
                 "🛍️ Shopping",
                 "🎟️ Tickets",
@@ -634,7 +628,6 @@
 
             dashboardDisplayOrder.forEach(cat => {
                 if (cat === "占位") {
-                    // 左側行不滿 4 個，塞入隱形空白撐開版面
                     catTotalsContainer.innerHTML += `<div class="cat-total-item" style="visibility:hidden; opacity:0;"><span class="cat-name">-</span><span class="cat-num">0</span></div>`;
                 } else if (catSumsThb[cat] !== undefined) {
                     catTotalsContainer.innerHTML += `
