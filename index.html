@@ -32,8 +32,14 @@
             --hl-shopping-txt: #8e44ad;
             --hl-tickets: #e8f8f5; 
             --hl-tickets-txt: #16a085;
+            
+            /* 🚌 交通專屬顏色（改為淡灰色系） */
             --hl-trans: #ebf5fb;   
             --hl-trans-txt: #566573;
+            
+            /* 🛡️ 保險專屬顏色（新增：淡綠色系，與交通區隔開） */
+            --hl-insurance: #eaf2f8;
+            --hl-insurance-txt: #2471a3;
         }
         
         body {
@@ -309,16 +315,10 @@
          * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
          ***************************************************************************/
 
-        // 【參數：本地資料庫檔案名稱】
-        // 用於瀏覽器內部儲存 (OPFS)。若要開啟新旅程或切換國家，可更換此檔名以防數據與舊行程重疊。
         const DATA_FILE = "travel_thb_records_v2.json";
-
-        // 【參數：預設初始匯率】
-        // 當使用者第一次開啟網頁且尚未手動修改匯率時的保底數值（計算基準：1 外幣 = 多少港幣）。
         let globalFxRate = 0.22;
         
-        // 【參數：消費分類清單】
-        // 分類乾淨化，按鈕上不帶任何金額與幣別註記。格式須為："圖示[空格]名稱"。
+        // 分類清單，已包含 Insurance 項目
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
@@ -329,13 +329,11 @@
             "🛡️ Insurance"
         ];
         
-        // 【內部執行變數】不建議修改
         let records = [];           
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        // 【參數與核心設定：定義「港幣直入」模式的分類項目】
-        // 這裡精準定義哪幾個分類屬於港幣模式。已依照要求將 Insurance 納入，與 Flights、Stay 行為一致。
+        // 核心設定：直接精準定義哪幾個分類屬於「港幣直入」模式（Flights, Stay, Insurance）
         function checkIsHkdMode(catName) {
             return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
         }
@@ -412,7 +410,6 @@
                 `;
             });
             
-            // 初始化輸入框的提示資訊（改為純英文，移除括號）
             updatePlaceholder(selectedCategory);
         }
 
@@ -423,7 +420,6 @@
             updatePlaceholder(cat);
         }
 
-        // 動態更新輸入框提示：完全換為英文，移除所有中文與括號文字
         function updatePlaceholder(cat) {
             const amtInput = document.getElementById('amount');
             if (checkIsHkdMode(cat)) {
@@ -449,7 +445,6 @@
             let isHkdMode = checkIsHkdMode(selectedCategory);
 
             if (isHkdMode) {
-                // 港幣直入：系統自動判定將「輸入的港幣金額 / 當下匯率」精準換算為泰銖存入
                 finalThbAmount = Math.round(inputAmount / globalFxRate);
             }
 
@@ -493,7 +488,6 @@
 
             editingRecordId = id; 
             
-            // 編輯防錯：如果是港幣直入項目，編輯時帶回原本輸入的港幣金額，其餘帶回泰銖
             if (record.wasHkdInput) {
                 document.getElementById('amount').value = record.wasHkdInput;
             } else {
@@ -521,12 +515,18 @@
             }
         }
 
+        // 核心修改點：依據分類標籤回傳對應的 CSS 樣式
         function getHighlightStyle(category) {
             if (category.includes("Flights")) return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";
             if (category.includes("Stay")) return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";
             if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
             if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
             if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
+            
+            // 🛡️ 保險使用專屬的深藍字配藍底
+            if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
+            
+            // 🚌 交通使用獨立的灰黑字配灰藍底
             return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
         }
 
@@ -558,7 +558,6 @@
                 let currentItemHkd = 0;
                 let currentItemThb = r.amount;
 
-                // 檢查是否為港幣直入項目：歷史區精準顯示當初輸入的 HKD 金額，其餘日常消費由泰銖依最新匯率換算
                 if (checkIsHkdMode(r.category) && r.wasHkdInput) {
                     currentItemHkd = r.wasHkdInput; 
                 } else {
@@ -610,15 +609,14 @@
             });
         }
 
-        // CSV 智慧匯出邏輯：港幣直入項目不計算且不生成 Daily Total 行
         function exportToCSV() {
             if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
             let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; 
             
             let lastIsoDate = "";
-            let dayTotalThb = 0, dayTotalHkd = 0; // 每日小計（不包含港幣直入項目）
-            let tripTotalThb = 0, tripTotalHkd = 0; // 全行程總計
+            let dayTotalThb = 0, dayTotalHkd = 0; 
+            let tripTotalThb = 0, tripTotalHkd = 0; 
 
             for (let i = 0; i < sortedRecords.length; i++) {
                 const r = sortedRecords[i];
@@ -637,22 +635,17 @@
                 let displayDate = (currentIsoDate !== lastIsoDate) ? currentIsoDate : "";
                 if(displayDate) lastIsoDate = currentIsoDate;
                 
-                // 寫入一般交易行
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
-                // 核心分流：港幣直入項目不計入 Daily Total 的每日小計
                 if (!checkIsHkdMode(r.category)) {
                     dayTotalThb += currentItemThb;
                     dayTotalHkd += currentItemHkd;
                 }
 
-                // 總行程大花費依然會全部包含
                 tripTotalThb += currentItemThb;
                 tripTotalHkd += currentItemHkd;
 
-                // 觸發當日小計 (當日期改變，或到最後一筆交易時)
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
-                    // 如果當天扣除港幣直入項目之後，一般消費累積大於 0，才打印 Daily Total
                     if (dayTotalThb > 0) {
                         csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
                     }
@@ -660,7 +653,6 @@
                     dayTotalHkd = 0;
                 }
                 
-                // 行程完結：打印大總計
                 if (!nextRecord) {
                     csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
                 }
