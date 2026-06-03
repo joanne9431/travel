@@ -412,48 +412,48 @@
         }
 
         // 方案 B 的核心 JavaScript 修改點：依選中狀態動態計算、渲染專屬的選取背景色
-       function renderCategories() {
-    const picker = document.getElementById('category-picker');
-    picker.innerHTML = ''; 
-    
-    categories.forEach(cat => {
-        const isActive = (cat === selectedCategory);
-        const activeClass = isActive ? 'active' : '';
-        const parts = cat.split(' ');
-        const icon = parts[0];
-        const label = parts.slice(1).join(' ');
+function renderCategories() {
+            const picker = document.getElementById('category-picker');
+            picker.innerHTML = ''; 
+            
+            categories.forEach(cat => {
+                const isActive = (cat === selectedCategory);
+                const activeClass = isActive ? 'active' : '';
+                const parts = cat.split(' ');
+                const icon = parts[0];
+                const label = parts.slice(1).join(' ');
 
-        // 核心修改：選取時背景與 history 標籤相同，且邊框顏色（border-color）改為與背景色一致
-        let customStyle = '';
-        if (isActive) {
-            let bgColor = 'var(--grey)';
-            let txtColor = 'var(--text)';
+                // 核心修改：選取時背景與文字與 history 相同，且邊框顏色（border-color）改為與背景色一致
+                let customStyle = '';
+                if (isActive) {
+                    let bgColor = 'var(--grey)';
+                    let txtColor = 'var(--text)';
+                    
+                    if (cat.includes("Flights")) { bgColor = 'var(--hl-flights)'; txtColor = 'var(--hl-flights-txt)'; }
+                    if (cat.includes("Stay")) { bgColor = 'var(--hl-stay)'; txtColor = 'var(--hl-stay-txt)'; }
+                    if (cat.includes("Dining")) { bgColor = 'var(--hl-dining)'; txtColor = 'var(--hl-dining-txt)'; }
+                    if (cat.includes("Shopping")) { bgColor = 'var(--hl-shopping)'; txtColor = 'var(--hl-shopping-txt)'; }
+                    if (cat.includes("Tickets")) { bgColor = 'var(--hl-tickets)'; txtColor = 'var(--hl-tickets-txt)'; }
+                    if (cat.includes("Transport")) { bgColor = 'var(--hl-trans)'; txtColor = 'var(--hl-trans-txt)'; }
+                    
+                    // 將 border-color 設定為與 ${bgColor} 相同，文字加上 !important 確保壓過 CSS 的白字設定
+                    customStyle = `style="background-color: ${bgColor}; color: ${txtColor} !important; border-color: ${bgColor};"`;
+                }
+
+                picker.innerHTML += `
+                    <button type="button" class="category-btn ${activeClass}" ${customStyle} onclick="selectCategory('${cat}', this)">
+                        <span class="icon-label">${icon}</span>
+                        <span class="label">${label}</span>
+                    </button>
+                `;
+            });
             
-            if (cat.includes("Flights")) { bgColor = 'var(--hl-flights)'; txtColor = 'var(--hl-flights-txt)'; }
-            if (cat.includes("Stay")) { bgColor = 'var(--hl-stay)'; txtColor = 'var(--hl-stay-txt)'; }
-            if (cat.includes("Dining")) { bgColor = 'var(--hl-dining)'; txtColor = 'var(--hl-dining-txt)'; }
-            if (cat.includes("Shopping")) { bgColor = 'var(--hl-shopping)'; txtColor = 'var(--hl-shopping-txt)'; }
-            if (cat.includes("Tickets")) { bgColor = 'var(--hl-tickets)'; txtColor = 'var(--hl-tickets-txt)'; }
-            if (cat.includes("Transport")) { bgColor = 'var(--hl-trans)'; txtColor = 'var(--hl-trans-txt)'; }
-            
-            // 關鍵點：這裡的 border-color 設定為與 ${bgColor} 相同，完美符合您的需求
-            customStyle = `style="background-color: ${bgColor}; color: ${txtColor} !important; border-color: ${bgColor};"`;
+            updatePlaceholder(selectedCategory);
         }
-
-        picker.innerHTML += `
-            <button type="button" class="category-btn ${activeClass}" ${customStyle} onclick="selectCategory('${cat}', this)">
-                <span class="icon-label">${icon}</span>
-                <span class="label">${label}</span>
-            </button>
-        `;
-    });
-    
-    updatePlaceholder(selectedCategory);
-}
 
         function selectCategory(cat, btn) {
             selectedCategory = cat; 
-            // 重新呼叫渲染以刷新所有按鈕的選取顏色樣式
+            // 這裡改為重新呼叫 renderCategories()，才能在點選時動態刷新每個按鈕的 style 顏色
             renderCategories(); 
         }
 
