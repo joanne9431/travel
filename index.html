@@ -412,13 +412,10 @@
         }
 
         // 方案 B 的核心 JavaScript 修改點：依選中狀態動態計算、渲染專屬的選取背景色
-        function renderCategories() {
+       function renderCategories() {
     const picker = document.getElementById('category-picker');
     picker.innerHTML = ''; 
     
-    let topRowHtml = '<div class="category-row top-row">';
-    let bottomRowHtml = '<div class="category-row bottom-row">';
-
     categories.forEach(cat => {
         const isActive = (cat === selectedCategory);
         const activeClass = isActive ? 'active' : '';
@@ -426,7 +423,7 @@
         const icon = parts[0];
         const label = parts.slice(1).join(' ');
 
-        // 核心修改：當被選取時，背景與文字顏色直接套用跟 history 標籤一模一樣的變數
+        // 核心修改：選取時背景與 history 標籤相同，且邊框顏色（border-color）改為與背景色一致
         let customStyle = '';
         if (isActive) {
             let bgColor = 'var(--grey)';
@@ -437,31 +434,20 @@
             if (cat.includes("Dining")) { bgColor = 'var(--hl-dining)'; txtColor = 'var(--hl-dining-txt)'; }
             if (cat.includes("Shopping")) { bgColor = 'var(--hl-shopping)'; txtColor = 'var(--hl-shopping-txt)'; }
             if (cat.includes("Tickets")) { bgColor = 'var(--hl-tickets)'; txtColor = 'var(--hl-tickets-txt)'; }
-            if (cat.includes("Insurance")) { bgColor = 'var(--hl-insurance)'; txtColor = 'var(--hl-insurance-txt)'; }
             if (cat.includes("Transport")) { bgColor = 'var(--hl-trans)'; txtColor = 'var(--hl-trans-txt)'; }
             
-            // 這裡同時綁定背景、文字以及邊框顏色，邊框採用跟深色文字一樣的顏色來增加點選立體感
+            // 關鍵點：這裡的 border-color 設定為與 ${bgColor} 相同，完美符合您的需求
             customStyle = `style="background-color: ${bgColor}; color: ${txtColor} !important; border-color: ${bgColor};"`;
         }
 
-        const buttonHtml = `
+        picker.innerHTML += `
             <button type="button" class="category-btn ${activeClass}" ${customStyle} onclick="selectCategory('${cat}', this)">
                 <span class="icon-label">${icon}</span>
                 <span class="label">${label}</span>
             </button>
         `;
-
-        if (cat === "✈️ Flights" || cat === "🏨 Stay" || cat === "🛡️ Insurance") {
-            topRowHtml += buttonHtml;
-        } else {
-            bottomRowHtml += buttonHtml;
-        }
     });
-
-    topRowHtml += '</div>';
-    bottomRowHtml += '</div>';
-
-    picker.innerHTML = topRowHtml + bottomRowHtml;
+    
     updatePlaceholder(selectedCategory);
 }
 
