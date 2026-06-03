@@ -21,35 +21,19 @@
             --text: #333333;       
             --grey: #e1e4e8;       
             
-            /* 🇹🇭 泰國主題專屬高辨識度色彩矩陣 🇹🇭 */
-            
-            /* ✈️ Flights：皇家泰航藍（優雅深藍配淡藍底） */
+            /* Highlight 顏色背景 */
             --hl-flights: #e8f4fd; 
-            --hl-flights-txt: #1a5276;
-            
-            /* 🏨 Stay：大皇宮與廟宇聖金（耀眼金黃配淺金底） */
-            --hl-stay: #fef9e7;    
-            --hl-stay-txt: #b7950b;
-            
-            /* 🛡️ Insurance：泰國傳統佛寺紅/國旗紅（醒目磚紅配粉紅底） */
-            --hl-insurance: #f9ebea;
-            --hl-insurance-txt: #922b21;
-            
-            /* 🍱 Dining：正宗泰式奶茶橘（濃郁奶茶橘配淺橘底） */
-            --hl-dining: #fdf2e9;  
-            --hl-dining-txt: #d35400;
-            
-            /* 🛍️ Shopping：曼谷霓虹夜市紫（魅惑深紫配淡紫底） */
+            --hl-flights-txt: #2980b9;
+            --hl-stay: #fef5e7;    
+            --hl-stay-txt: #d35400;
+            --hl-dining: #fdebd0;  
+            --hl-dining-txt: #e67e22;
             --hl-shopping: #f5eef8;
-            --hl-shopping-txt: #7d3c98;
-            
-            /* 🎟️ Tickets：安帕瓦水上市場碧綠（清爽碧綠配淡綠底） */
+            --hl-shopping-txt: #8e44ad;
             --hl-tickets: #e8f8f5; 
-            --hl-tickets-txt: #117a65;
-            
-            /* 🚌 Transport：經典曼谷嘟嘟車青銅/深灰藍（深鐵灰配灰藍底） */
+            --hl-tickets-txt: #16a085;
             --hl-trans: #ebf5fb;   
-            --hl-trans-txt: #2c3e50;
+            --hl-trans-txt: #566573;
         }
         
         body {
@@ -202,45 +186,31 @@
         
         .category-picker {
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap; 
             gap: 6px;       
             margin: 8px 0;
         }
         
-        .category-row {
-            display: flex;
-            gap: 6px;
-            width: 100%;
-        }
-
-        .category-row.top-row .category-btn {
-            flex: 1 1 calc(33.33% - 4px);
-        }
-
-        .category-row.bottom-row .category-btn {
-            flex: 1 1 calc(25% - 4.5px);
-        }
-        
         .category-btn {
+            flex: 1 1 calc(33.33% - 6px); 
             background-color: var(--card-bg);
             color: var(--text);
-            border: none; /* 原本是 1.5px solid var(--grey)，改成 none 就徹底沒有任何邊框了 */
+            border: 1.5px solid var(--grey);
             border-radius: 10px;
-            padding: 9.5px 2px; /* 因為少了邊框的厚度，微調一下 padding 讓按鈕高度跟原本一樣舒服 */
+            padding: 8px 2px; 
             display: flex;
             flex-direction: column; 
             align-items: center;
             gap: 2px;
             margin: 0;
-            box-sizing: border-box;
-            transition: background-color 0.2s, border-color 0.2s, color 0.15s;
         }
         .category-btn .icon-label { font-size: 1.05rem; } 
         .category-btn .label { font-size: 0.75rem; font-weight: bold; } 
         
-        /* 方案 B 的 CSS 修改點：選取時強制將文字設為白色，具體顏色交給 JS 動態控管 */
         .category-btn.active {
-            color: white !important;
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
         }
         
         .edit-mode-indicator {
@@ -277,6 +247,8 @@
         .amount-hkd { font-size: 0.72rem; color: #888; font-weight: 500; }
         
         .btn-action { background: none; padding: 4px; margin: 0; width: auto; font-size: 0.9rem; display: inline-block;}
+        
+        @media (min-width: 400px) { .category-btn { flex: 1 1 calc(25% - 6px); } }
     </style>
 </head>
 <body>
@@ -326,7 +298,7 @@
     </div>
 
     <script>
-         /***************************************************************************
+        /***************************************************************************
          * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
          * * 如果這份網頁以後要改成「歐元版」或「日幣版」，請直接搜尋並修改以下對應參數：
          * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
@@ -336,13 +308,14 @@
          * 如果你要換成「日圓」，請到下方的 renderRecords() 與 exportToCSV() 內，
          * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
          ***************************************************************************/
+
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
+        // 分類乾淨化，按鈕上不帶任何金額與幣別註記
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
-            "🛡️ Insurance",
             "🍱 Dining", 
             "🛍️ Shopping", 
             "🎟️ Tickets", 
@@ -353,8 +326,9 @@
         let selectedCategory = "";  
         let editingRecordId = null; 
 
+        // 核心設定：直接精準定義哪幾個分類屬於「港幣直入」模式
         function checkIsHkdMode(catName) {
-            return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
+            return catName === "✈️ Flights" || catName === "🏨 Stay";
         }
 
         async function init() {
@@ -411,8 +385,7 @@
             }
         }
 
-        // 方案 B 的核心 JavaScript 修改點：依選中狀態動態計算、渲染專屬的選取背景色
-function renderCategories() {
+        function renderCategories() {
             const picker = document.getElementById('category-picker');
             picker.innerHTML = ''; 
             
@@ -436,7 +409,7 @@ function renderCategories() {
                     if (cat.includes("Tickets")) { bgColor = 'var(--hl-tickets)'; txtColor = 'var(--hl-tickets-txt)'; }
                     if (cat.includes("Transport")) { bgColor = 'var(--hl-trans)'; txtColor = 'var(--hl-trans-txt)'; }
                     
-                    // 將 border-color 設定為與 ${bgColor} 相同，文字加上 !important 確保壓過 CSS 的白字設定
+                    // 將 border-color 設定為與 ${bgColor} 相同，文字加上 !important 確保壓過原有 CSS
                     customStyle = `style="background-color: ${bgColor}; color: ${txtColor} !important; border-color: ${bgColor};"`;
                 }
 
@@ -453,10 +426,11 @@ function renderCategories() {
 
         function selectCategory(cat, btn) {
             selectedCategory = cat; 
-            // 這裡改為重新呼叫 renderCategories()，才能在點選時動態刷新每個按鈕的 style 顏色
+            // 重新呼記 renderCategories 以動態刷新所有按鈕的點選狀態顏色樣式
             renderCategories(); 
         }
 
+        // 動態更新輸入框提示：完全換為英文，移除所有中文與括號文字
         function updatePlaceholder(cat) {
             const amtInput = document.getElementById('amount');
             if (checkIsHkdMode(cat)) {
@@ -482,6 +456,7 @@ function renderCategories() {
             let isHkdMode = checkIsHkdMode(selectedCategory);
 
             if (isHkdMode) {
+                // 港幣直入：系統自動判定將「輸入的港幣金額 / 當下匯率」精準換算為泰銖存入
                 finalThbAmount = Math.round(inputAmount / globalFxRate);
             }
 
@@ -525,6 +500,7 @@ function renderCategories() {
 
             editingRecordId = id; 
             
+            // 編輯防錯：如果是港幣直入項目，編輯時帶回原本輸入的港幣金額，其餘帶回泰銖
             if (record.wasHkdInput) {
                 document.getElementById('amount').value = record.wasHkdInput;
             } else {
@@ -558,10 +534,7 @@ function renderCategories() {
             if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
             if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
             if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
-            if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
-            if (category.includes("Transport")) return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
-            
-            return "background-color: var(--grey); color: var(--text);";
+            return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
         }
 
         function renderRecords() {
@@ -592,6 +565,7 @@ function renderCategories() {
                 let currentItemHkd = 0;
                 let currentItemThb = r.amount;
 
+                // 檢查是否為港幣直入項目：歷史區精準顯示當初輸入的 HKD 金額，其餘日常消費由泰銖依最新匯率換算
                 if (checkIsHkdMode(r.category) && r.wasHkdInput) {
                     currentItemHkd = r.wasHkdInput; 
                 } else {
@@ -643,14 +617,15 @@ function renderCategories() {
             });
         }
 
+        // CSV 智慧匯出邏輯：Flights 和 Stay 不計算且不生成 Daily Total 行
         function exportToCSV() {
             if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
             let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; 
             
             let lastIsoDate = "";
-            let dayTotalThb = 0, dayTotalHkd = 0; 
-            let tripTotalThb = 0, tripTotalHkd = 0; 
+            let dayTotalThb = 0, dayTotalHkd = 0; // 每日小計（不包含港幣直入項目）
+            let tripTotalThb = 0, tripTotalHkd = 0; // 全行程總計
 
             for (let i = 0; i < sortedRecords.length; i++) {
                 const r = sortedRecords[i];
@@ -669,17 +644,22 @@ function renderCategories() {
                 let displayDate = (currentIsoDate !== lastIsoDate) ? currentIsoDate : "";
                 if(displayDate) lastIsoDate = currentIsoDate;
                 
+                // 寫入一般交易行
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
+                // 核心分流：機票、酒店分開歸類，不計入 Daily Total 的每日小計
                 if (!checkIsHkdMode(r.category)) {
                     dayTotalThb += currentItemThb;
                     dayTotalHkd += currentItemHkd;
                 }
 
+                // 總行程大花費依然會全部包含
                 tripTotalThb += currentItemThb;
                 tripTotalHkd += currentItemHkd;
 
+                // 觸發當日小計 (當日期改變，或到最後一筆交易時)
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
+                    // 如果當天扣除 Flights/Stay 之後，一般消費累積大於 0，才打印 Daily Total
                     if (dayTotalThb > 0) {
                         csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
                     }
@@ -687,6 +667,7 @@ function renderCategories() {
                     dayTotalHkd = 0;
                 }
                 
+                // 行程完結：打印大總計
                 if (!nextRecord) {
                     csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
                 }
