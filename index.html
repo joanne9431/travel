@@ -32,8 +32,12 @@
             --hl-shopping-txt: #8e44ad;
             --hl-tickets: #e8f8f5; 
             --hl-tickets-txt: #16a085;
+            
+            /* 🚌 交通專屬顏色 */
             --hl-trans: #ebf5fb;   
             --hl-trans-txt: #566573;
+            
+            /* 🛡️ 保險專屬顏色 */
             --hl-insurance: #eaf2f8;
             --hl-insurance-txt: #2471a3;
         }
@@ -186,15 +190,32 @@
         .btn-save { background-color: var(--primary); color: white; margin-top: 6px; }
         .btn-backup { background-color: #566573; color: white; margin-top: 6px; }
         
+        /* 修改點：改為垂直佈局，內部再分上下兩排容器 */
         .category-picker {
             display: flex;
-            flex-wrap: wrap; 
+            flex-direction: column;
             gap: 6px;       
             margin: 8px 0;
         }
         
+        /* 分類排容器：讓內部按鈕橫向排滿 */
+        .category-row {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+
+        /* 上排 3 個按鈕，各佔 1/3 */
+        .category-row.top-row .category-btn {
+            flex: 1 1 calc(33.33% - 4px);
+        }
+
+        /* 下排 4 個按鈕，各佔 1/4 */
+        .category-row.bottom-row .category-btn {
+            flex: 1 1 calc(25% - 4.5px);
+        }
+        
         .category-btn {
-            flex: 1 1 calc(33.33% - 6px); 
             background-color: var(--card-bg);
             color: var(--text);
             border: 1.5px solid var(--grey);
@@ -205,6 +226,7 @@
             align-items: center;
             gap: 2px;
             margin: 0;
+            box-sizing: border-box;
         }
         .category-btn .icon-label { font-size: 1.05rem; } 
         .category-btn .label { font-size: 0.75rem; font-weight: bold; } 
@@ -249,8 +271,6 @@
         .amount-hkd { font-size: 0.72rem; color: #888; font-weight: 500; }
         
         .btn-action { background: none; padding: 4px; margin: 0; width: auto; font-size: 0.9rem; display: inline-block;}
-        
-        @media (min-width: 400px) { .category-btn { flex: 1 1 calc(25% - 6px); } }
     </style>
 </head>
 <body>
@@ -314,22 +334,22 @@
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
-        // 分類清單，已包含 Insurance 項目
+        // 分類清單定義
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
+            "🛡️ Insurance",
             "🍱 Dining", 
             "🛍️ Shopping", 
             "🎟️ Tickets", 
-            "🚌 Transport",
-            "🛡️ Insurance"
+            "🚌 Transport"
         ];
         
         let records = [];           
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        // 核心設定：直接精準定義哪幾個分類屬於「港幣直入」模式（Flights, Stay, Insurance）
+        // 核心設定：精準定義哪幾項屬於港幣直入模式
         function checkIsHkdMode(catName) {
             return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
         }
@@ -388,23 +408,41 @@
             }
         }
 
+        // 修改點：按鈕分排渲染邏輯
         function renderCategories() {
             const picker = document.getElementById('category-picker');
             picker.innerHTML = ''; 
             
+            // 建立上下兩排的 HTML 字串容器
+            let topRowHtml = '<div class="category-row top-row">';
+            let bottomRowHtml = '<div class="category-row bottom-row">';
+
             categories.forEach(cat => {
                 const isActive = (cat === selectedCategory) ? 'active' : '';
                 const parts = cat.split(' ');
                 const icon = parts[0];
                 const label = parts.slice(1).join(' ');
 
-                picker.innerHTML += `
+                const buttonHtml = `
                     <button type="button" class="category-btn ${isActive}" onclick="selectCategory('${cat}', this)">
                         <span class="icon-label">${icon}</span>
                         <span class="label">${label}</span>
                     </button>
                 `;
+
+                // 依項目判定歸入上排還是下排
+                if (cat === "✈️ Flights" || cat === "🏨 Stay" || cat === "🛡️ Insurance") {
+                    topRowHtml += buttonHtml;
+                } else {
+                    bottomRowHtml += buttonHtml;
+                }
             });
+
+            topRowHtml += '</div>';
+            bottomRowHtml += '</div>';
+
+            // 將組裝好的上下兩排塞入主面板
+            picker.innerHTML = topRowHtml + bottomRowHtml;
             
             updatePlaceholder(selectedCategory);
         }
@@ -511,18 +549,13 @@
             }
         }
 
-        // 核心修改點：依據分類標籤回傳對應的 CSS 樣式
         function getHighlightStyle(category) {
             if (category.includes("Flights")) return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";
             if (category.includes("Stay")) return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";
             if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
             if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
             if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
-            
-            // 🛡️ 保險使用專屬的深藍字配藍底
             if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
-            
-            // 🚌 交通使用獨立的灰黑字配灰藍底
             return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
         }
 
