@@ -311,11 +311,29 @@
          * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
          ***************************************************************************/
 
-        const DATA_FILE = "travel_thb_records_v2.json";
-        let globalFxRate = 0.22;
+        // ==========================================
+        // 核心設定參數 (可自行修改)
+        // ==========================================
+
+        /**
+         * 1. 儲存的檔案名稱 (本地瀏覽器沙盒沙箱名稱)
+         * 如果更換新的行程，建議修改此名稱（例如改成 'travel_japan_v1.json'），以防止新舊行程的歷史數據重疊。
+         */
+        const DATA_FILE = "travel_thb_records_v2.json";[cite: 2]
+
+        /**
+         * 2. 預設初始匯率
+         * 當使用者第一次打開網頁、且還沒有在輸入框手動更改匯率時，系統會默認使用這個數值。
+         * 公式基準：1 單位外幣 = X 港幣 (例如 1 THB = 0.22 HKD)
+         */
+        let globalFxRate = 0.22;[cite: 2]
         
-        // 分類乾淨化，按鈕上不帶任何金額與幣別註記
-        let categories = [
+        /**
+         * 3. 行程記帳分類清單
+         * 您可以自由增減此陣列中的分類項目或修改圖示。
+         * 格式必須為： "圖示[空格]分類英文名稱" (例如: "🍱 Dining")。
+         */
+        let categories = [[cite: 2]
             "✈️ Flights", 
             "🏨 Stay", 
             "🍱 Dining", 
@@ -323,254 +341,284 @@
             "🎟️ Tickets", 
             "🚌 Transport",
             "🛡️ Insurance"
-        ];
-        
-        let records = [];           
-        let selectedCategory = "";  
-        let editingRecordId = null; 
+        ];[cite: 2]
 
-        // 核心設定：直接精準定義哪幾個分類屬於「港幣直入」模式
-        function checkIsHkdMode(catName) {
-            return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
+        /**
+         * 4. 判斷是否為「港幣直入」模式的分類
+         * 這裡精準指定哪些分類在記帳時，輸入的金額要被直接當作「港幣 (HKD)」處理。
+         * 預設為機票、酒店與保險，其餘消費皆預設為泰銖 (THB)。
+         * 如果您想增加其他直入港幣的項目（例如 🛍️ Shopping 也想直接打港幣），
+         * 請在後面加上 `|| catName === "🛍️ Shopping"` 即可。
+         */
+        function checkIsHkdMode(catName) {[cite: 2]
+            return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";[cite: 2]
         }
 
-        async function init() {
-            if(categories.length > 0) selectedCategory = categories[0];
-            setTodayDate();
+        /**
+         * 5. 預設的記帳預填初始日期
+         * 當全新添加一筆消費、且沒有設定日期時，系統防錯機制的保底日期。
+         * 預設格式為 "YYYY-MM-DD" 的字串。
+         */
+        const DEFAULT_FALLBACK_DATE = "2026-06-01";
+
+
+        // ==========================================
+        // 系統內部運行變數 (不建議修改)
+        // ==========================================
+        let records = [];           // 儲存所有記帳紀錄的陣列[cite: 2]
+        let selectedCategory = "";  // 當前畫面上被選中的分類名稱[cite: 2]
+        let editingRecordId = null; // 當前正在編輯中的紀錄 ID（如果是新增狀態則為 null）[cite: 2]
+
+
+        // ==========================================
+        // 程式核心邏輯
+        // ==========================================
+
+        async function init() {[cite: 2]
+            if(categories.length > 0) selectedCategory = categories[0];[cite: 2]
+            setTodayDate();[cite: 2]
             
-            const savedRate = localStorage.getItem('thb_fx_rate');
-            if(savedRate) {
-                globalFxRate = parseFloat(savedRate);
-                document.getElementById('fx-rate').value = globalFxRate;
-            }
+            const savedRate = localStorage.getItem('thb_fx_rate');[cite: 2]
+            if(savedRate) {[cite: 2]
+                globalFxRate = parseFloat(savedRate);[cite: 2]
+                document.getElementById('fx-rate').value = globalFxRate;[cite: 2]
+            }[cite: 2]
 
-            await loadRecords();     
-            renderCategories();   
-            renderRecords();      
-        }
+            await loadRecords();     [cite: 2]
+            renderCategories();   [cite: 2]
+            renderRecords();      [cite: 2]
+        }[cite: 2]
 
-        function setTodayDate() {
-            const now = new Date();
-            document.getElementById('edit-date').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        }
+        // 自動將日期輸入框設定為今天
+        function setTodayDate() {[cite: 2]
+            const now = new Date();[cite: 2]
+            document.getElementById('edit-date').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;[cite: 2]
+        }[cite: 2]
 
-        function handleRateChange() {
-            const rateInput = document.getElementById('fx-rate');
-            let val = parseFloat(rateInput.value);
-            if(isNaN(val) || val <= 0) val = 0.22;
-            globalFxRate = val;
-            localStorage.setItem('thb_fx_rate', globalFxRate);
-            alert(`匯率已成功修改！目前設定為 1 THB = ${globalFxRate} HKD`);
-            renderRecords(); 
-        }
+        // 處理手動修改匯率的事件
+        function handleRateChange() {[cite: 2]
+            const rateInput = document.getElementById('fx-rate');[cite: 2]
+            let val = parseFloat(rateInput.value);[cite: 2]
+            if(isNaN(val) || val <= 0) val = 0.22;[cite: 2]
+            globalFxRate = val;[cite: 2]
+            localStorage.setItem('thb_fx_rate', globalFxRate);[cite: 2]
+            alert(`匯率已成功修改！目前設定為 1 THB = ${globalFxRate} HKD`);[cite: 2]
+            renderRecords(); [cite: 2]
+        }[cite: 2]
 
-        async function loadRecords() {
+        // 從瀏覽器沙盒/本地緩存讀取歷史數據
+        async function loadRecords() {[cite: 2]
             try {
-                const root = await navigator.storage.getDirectory(); 
-                const fileHandle = await root.getFileHandle(DATA_FILE, { create: true });
-                const file = await fileHandle.getFile();
-                const text = await file.text();
-                records = text ? JSON.parse(text) : [];
+                const root = await navigator.storage.getDirectory(); [cite: 2]
+                const fileHandle = await root.getFileHandle(DATA_FILE, { create: true });[cite: 2]
+                const file = await fileHandle.getFile();[cite: 2]
+                const text = await file.text();[cite: 2]
+                records = text ? JSON.parse(text) : [];[cite: 2]
             } catch (e) {
-                records = JSON.parse(localStorage.getItem('thb_rec_v2')) || [];
+                records = JSON.parse(localStorage.getItem('thb_rec_v2')) || [];[cite: 2]
             }
-        }
+        }[cite: 2]
 
-        async function saveRecords() {
+        // 儲存數據至本地
+        async function saveRecords() {[cite: 2]
             try {
-                const root = await navigator.storage.getDirectory();
-                const fileHandle = await root.getFileHandle(DATA_FILE, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(JSON.stringify(records));
-                await writable.close();
+                const root = await navigator.storage.getDirectory();[cite: 2]
+                const fileHandle = await root.getFileHandle(DATA_FILE, { create: true });[cite: 2]
+                const writable = await fileHandle.createWritable();[cite: 2]
+                await writable.write(JSON.stringify(records));[cite: 2]
+                await writable.close();[cite: 2]
             } catch (e) {
-                localStorage.setItem('thb_rec_v2', JSON.stringify(records));
+                localStorage.setItem('thb_rec_v2', JSON.stringify(records));[cite: 2]
             }
-        }
+        }[cite: 2]
 
-        function renderCategories() {
-            const picker = document.getElementById('category-picker');
-            picker.innerHTML = ''; 
+        // 渲染分類按鈕
+        function renderCategories() {[cite: 2]
+            const picker = document.getElementById('category-picker');[cite: 2]
+            picker.innerHTML = ''; [cite: 2]
             
-            categories.forEach(cat => {
-                const isActive = (cat === selectedCategory) ? 'active' : '';
-                const parts = cat.split(' ');
-                const icon = parts[0];
-                const label = parts.slice(1).join(' ');
+            categories.forEach(cat => {[cite: 2]
+                const isActive = (cat === selectedCategory) ? 'active' : '';[cite: 2]
+                const parts = cat.split(' ');[cite: 2]
+                const icon = parts[0];[cite: 2]
+                const label = parts.slice(1).join(' ');[cite: 2]
 
                 picker.innerHTML += `
                     <button type="button" class="category-btn ${isActive}" onclick="selectCategory('${cat}', this)">
                         <span class="icon-label">${icon}</span>
                         <span class="label">${label}</span>
                     </button>
-                `;
-            });
+                `;[cite: 2]
+            });[cite: 2]
             
-            // 初始化輸入框的提示資訊（改為純英文，移除括號）
-            updatePlaceholder(selectedCategory);
-        }
+            updatePlaceholder(selectedCategory);[cite: 2]
+        }[cite: 2]
 
-        function selectCategory(cat, btn) {
-            selectedCategory = cat; 
-            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); 
-            btn.classList.add('active'); 
-            updatePlaceholder(cat);
-        }
+        // 切換選中的分類
+        function selectCategory(cat, btn) {[cite: 2]
+            selectedCategory = cat;  [cite: 2]
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); [cite: 2]
+            btn.classList.add('active'); [cite: 2]
+            updatePlaceholder(cat);[cite: 2]
+        }[cite: 2]
 
-        // 動態更新輸入框提示：完全換為英文，移除所有中文與括號文字
-        function updatePlaceholder(cat) {
-            const amtInput = document.getElementById('amount');
-            if (checkIsHkdMode(cat)) {
-                amtInput.placeholder = "Enter amount in HKD";
-            } else {
-                amtInput.placeholder = "Enter amount in THB";
-            }
-        }
+        // 動態根據是否為港幣模式，更新輸入框的 Placeholder 提示
+        function updatePlaceholder(cat) {[cite: 2]
+            const amtInput = document.getElementById('amount');[cite: 2]
+            if (checkIsHkdMode(cat)) {[cite: 2]
+                amtInput.placeholder = "Enter amount in HKD";[cite: 2]
+            } else {[cite: 2]
+                amtInput.placeholder = "Enter amount in THB";[cite: 2]
+            }[cite: 2]
+        }[cite: 2]
 
-        async function handleSubmit() {
-            const amountInput = document.getElementById('amount');
-            const noteInput = document.getElementById('note'); 
-            const dateInput = document.getElementById('edit-date');
+        // 儲存/更新單筆紀錄的送出邏輯
+        async function handleSubmit() {[cite: 2]
+            const amountInput = document.getElementById('amount');[cite: 2]
+            const noteInput = document.getElementById('note'); [cite: 2]
+            const dateInput = document.getElementById('edit-date');[cite: 2]
             
-            let inputAmount = parseFloat(amountInput.value);
-            const note = noteInput.value.trim(); 
+            let inputAmount = parseFloat(amountInput.value);[cite: 2]
+            const note = noteInput.value.trim(); [cite: 2]
 
-            if (isNaN(inputAmount) || inputAmount <= 0) return alert('請輸入正確且大於 0 的金額！');
+            if (isNaN(inputAmount) || inputAmount <= 0) return alert('請輸入正確且大於 0 的金額！');[cite: 2]
             
-            let targetDate = dateInput.value || `${new Date().getFullYear()}-06-01`;
+            let targetDate = dateInput.value || DEFAULT_FALLBACK_DATE;[cite: 2]
 
-            let finalThbAmount = inputAmount;
-            let isHkdMode = checkIsHkdMode(selectedCategory);
+            let finalThbAmount = inputAmount;[cite: 2]
+            let isHkdMode = checkIsHkdMode(selectedCategory);[cite: 2]
 
-            if (isHkdMode) {
-                // 港幣直入：系統自動判定將「輸入的港幣金額 / 當下匯率」精準換算為泰銖存入
-                finalThbAmount = Math.round(inputAmount / globalFxRate);
-            }
+            if (isHkdMode) {[cite: 2]
+                // 港幣直入：系統自動判定將「輸入的港幣金額 / 當下匯率」精準換算為外幣存入
+                finalThbAmount = Math.round(inputAmount / globalFxRate);[cite: 2]
+            }[cite: 2]
 
-            if (editingRecordId !== null) {
-                const recordIndex = records.findIndex(r => r.id === editingRecordId);
-                if(recordIndex !== -1) {
-                    records[recordIndex].amount = finalThbAmount;
-                    records[recordIndex].category = selectedCategory;
-                    records[recordIndex].note = note; 
-                    records[recordIndex].date = targetDate;
-                    records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; 
-                }
-                editingRecordId = null;
-                document.getElementById('form-title').innerText = "Add Travel Record";
-                document.getElementById('btn-save-main').innerText = "Save Record";
-                document.getElementById('btn-save-main').style.backgroundColor = "var(--primary)";
-                document.getElementById('edit-indicator').style.display = "none"; 
-            } else {
-                const newRecord = {
-                    id: Date.now(), 
-                    amount: finalThbAmount,
-                    category: selectedCategory,
-                    note: note, 
-                    date: targetDate,
-                    wasHkdInput: isHkdMode ? inputAmount : null 
-                };
-                records.unshift(newRecord);
-            }
+            if (editingRecordId !== null) {[cite: 2]
+                const recordIndex = records.findIndex(r => r.id === editingRecordId);[cite: 2]
+                if(recordIndex !== -1) {[cite: 2]
+                    records[recordIndex].amount = finalThbAmount;[cite: 2]
+                    records[recordIndex].category = selectedCategory;[cite: 2]
+                    records[recordIndex].note = note; [cite: 2]
+                    records[recordIndex].date = targetDate;[cite: 2]
+                    records[recordIndex].wasHkdInput = isHkdMode ? inputAmount : null; [cite: 2]
+                }[cite: 2]
+                editingRecordId = null;[cite: 2]
+                document.getElementById('form-title').innerText = "Add Travel Record";[cite: 2]
+                document.getElementById('btn-save-main').innerText = "Save Record";[cite: 2]
+                document.getElementById('btn-save-main').style.backgroundColor = "var(--primary)";[cite: 2]
+                document.getElementById('edit-indicator').style.display = "none"; [cite: 2]
+            } else {[cite: 2]
+                const newRecord = {[cite: 2]
+                    id: Date.now(), [cite: 2]
+                    amount: finalThbAmount,[cite: 2]
+                    category: selectedCategory,[cite: 2]
+                    note: note, [cite: 2]
+                    date: targetDate,[cite: 2]
+                    wasHkdInput: isHkdMode ? inputAmount : null [cite: 2]
+                };[cite: 2]
+                records.unshift(newRecord);[cite: 2]
+            }[cite: 2]
 
-            records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-            await saveRecords();     
-            amountInput.value = '';  
-            noteInput.value = '';  
-            setTodayDate(); 
-            renderRecords();         
-        }
+            records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);[cite: 2]
+            await saveRecords();     [cite: 2]
+            amountInput.value = '';  [cite: 2]
+            noteInput.value = '';  [cite: 2]
+            setTodayDate(); [cite: 2]
+            renderRecords();         [cite: 2]
+        }[cite: 2]
 
-        function startEdit(id) {
-            const record = records.find(r => r.id === id);
-            if(!record) return;
+        // 啟動點擊編輯模式
+        function startEdit(id) {[cite: 2]
+            const record = records.find(r => r.id === id);[cite: 2]
+            if(!record) return;[cite: 2]
 
-            editingRecordId = id; 
+            editingRecordId = id; [cite: 2]
             
-            // 編輯防錯：如果是港幣直入項目，編輯時帶回原本輸入的港幣金額，其餘帶回泰銖
-            if (record.wasHkdInput) {
-                document.getElementById('amount').value = record.wasHkdInput;
-            } else {
-                document.getElementById('amount').value = record.amount;
-            }
+            if (record.wasHkdInput) {[cite: 2]
+                document.getElementById('amount').value = record.wasHkdInput;[cite: 2]
+            } else {[cite: 2]
+                document.getElementById('amount').value = record.amount;[cite: 2]
+            }[cite: 2]
             
-            document.getElementById('note').value = record.note || ''; 
-            document.getElementById('edit-date').value = record.date; 
-            selectedCategory = record.category;
+            document.getElementById('note').value = record.note || ''; [cite: 2]
+            document.getElementById('edit-date').value = record.date; [cite: 2]
+            selectedCategory = record.category;[cite: 2]
             
-            document.getElementById('form-title').innerText = "Edit Trip Record";
-            document.getElementById('btn-save-main').innerText = "Update Record";
-            document.getElementById('btn-save-main').style.backgroundColor = "var(--warning)";
-            document.getElementById('edit-indicator').style.display = "block";
+            document.getElementById('form-title').innerText = "Edit Trip Record";[cite: 2]
+            document.getElementById('btn-save-main').innerText = "Update Record";[cite: 2]
+            document.getElementById('btn-save-main').style.backgroundColor = "var(--warning)";[cite: 2]
+            document.getElementById('edit-indicator').style.display = "block";[cite: 2]
             
-            renderCategories(); 
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+            renderCategories(); [cite: 2]
+            window.scrollTo({ top: 0, behavior: 'smooth' });[cite: 2]
+        }[cite: 2]
 
-        async function deleteRecord(id) {
-            if (confirm("確認要刪除此筆記帳紀錄嗎？")) {
-                records = records.filter(r => r.id !== id);
-                await saveRecords(); 
-                renderRecords();     
-            }
-        }
+        // 刪除單筆紀錄
+        async function deleteRecord(id) {[cite: 2]
+            if (confirm("確認要刪除此筆記帳紀錄嗎？")) {[cite: 2]
+                records = records.filter(r => r.id !== id);[cite: 2]
+                await saveRecords(); [cite: 2]
+                renderRecords();     [cite: 2]
+            }[cite: 2]
+        }[cite: 2]
 
-        function getHighlightStyle(category) {
-            if (category.includes("Flights")) return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";
-            if (category.includes("Stay")) return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";
-            if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
-            if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
-            if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
-            if (category.includes("Transport")) return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
-            if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
-            return "background-color: var(--grey); color: var(--text);";
-        }
+        // 根據不同分類，動態取得前端歷史列表標籤（Tag）的 CSS 樣式組
+        function getHighlightStyle(category) {[cite: 2]
+            if (category.includes("Flights")) return "background-color: var(--hl-flights); color: var(--hl-flights-txt);";[cite: 2]
+            if (category.includes("Stay")) return "background-color: var(--hl-stay); color: var(--hl-stay-txt);";[cite: 2]
+            if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";[cite: 2]
+            if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";[cite: 2]
+            if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";[cite: 2]
+            if (category.includes("Transport")) return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";[cite: 2]
+            if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";[cite: 2]
+            return "background-color: var(--grey); color: var(--text);";[cite: 2]
+        }[cite: 2]
 
-        function renderRecords() {
-            const listContainer = document.getElementById('history-list');
-            const totalContainer = document.getElementById('total');
-            const totalHkdContainer = document.getElementById('total-hkd');
-            const catTotalsContainer = document.getElementById('category-totals-container');
+        // 計算總額並渲染整個記帳歷史列表
+        function renderRecords() {[cite: 2]
+            const listContainer = document.getElementById('history-list');[cite: 2]
+            const totalContainer = document.getElementById('total');[cite: 2]
+            const totalHkdContainer = document.getElementById('total-hkd');[cite: 2]
+            const catTotalsContainer = document.getElementById('category-totals-container');[cite: 2]
             
-            listContainer.innerHTML = ''; 
-            catTotalsContainer.innerHTML = '';
+            listContainer.innerHTML = ''; [cite: 2]
+            catTotalsContainer.innerHTML = '';[cite: 2]
             
-            let totalThb = 0;
-            let totalHkd = 0;
-            let catSumsThb = {};
-            categories.forEach(cat => { catSumsThb[cat] = 0; });
+            let totalThb = 0;[cite: 2]
+            let totalHkd = 0;[cite: 2]
+            let catSumsThb = {};[cite: 2]
+            categories.forEach(cat => { catSumsThb[cat] = 0; });[cite: 2]
 
-            if (records.length === 0) {
-                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">No trip transactions yet.</div>`;
-                totalContainer.innerText = '0';
-                totalHkdContainer.innerText = '0';
-                categories.forEach(cat => {
-                    catTotalsContainer.innerHTML += `<div class="cat-total-item"><span class="cat-name">${cat.split(' ').slice(1).join(' ')}</span><span class="cat-num">฿0</span></div>`;
-                });
-                return;
-            }
+            if (records.length === 0) {[cite: 2]
+                listContainer.innerHTML = `<div style="color: #bbb; text-align: center; padding: 20px; font-size: 0.9rem;">No trip transactions yet.</div>`;[cite: 2]
+                totalContainer.innerText = '0';[cite: 2]
+                totalHkdContainer.innerText = '0';[cite: 2]
+                categories.forEach(cat => {[cite: 2]
+                    catTotalsContainer.innerHTML += `<div class="cat-total-item"><span class="cat-name">${cat.split(' ').slice(1).join(' ')}</span><span class="cat-num">฿0</span></div>`;[cite: 2]
+                });[cite: 2]
+                return;[cite: 2]
+            }[cite: 2]
 
-            records.forEach(r => {
-                let currentItemHkd = 0;
-                let currentItemThb = r.amount;
+            records.forEach(r => {[cite: 2]
+                let currentItemHkd = 0;[cite: 2]
+                let currentItemThb = r.amount;[cite: 2]
 
-                // 檢查是否為港幣直入項目：歷史區精準顯示當初輸入的 HKD 金額，其餘日常消費由泰銖依最新匯率換算
-                if (checkIsHkdMode(r.category) && r.wasHkdInput) {
-                    currentItemHkd = r.wasHkdInput; 
-                } else {
-                    currentItemHkd = Math.round(r.amount * globalFxRate); 
-                }
+                if (checkIsHkdMode(r.category) && r.wasHkdInput) {[cite: 2]
+                    currentItemHkd = r.wasHkdInput; [cite: 2]
+                } else {[cite: 2]
+                    currentItemHkd = Math.round(r.amount * globalFxRate); [cite: 2]
+                }[cite: 2]
 
-                totalThb += currentItemThb;
-                totalHkd += currentItemHkd;
+                totalThb += currentItemThb;[cite: 2]
+                totalHkd += currentItemHkd;[cite: 2]
                 
-                if (catSumsThb[r.category] !== undefined) {
-                    catSumsThb[r.category] += currentItemThb;
-                }
+                if (catSumsThb[r.category] !== undefined) {[cite: 2]
+                    catSumsThb[r.category] += currentItemThb;[cite: 2]
+                }[cite: 2]
 
-                const noteHTML = r.note ? `<span class="note-text">${r.note}</span>` : '';
-                const colorStyle = getHighlightStyle(r.category);
-                const displayCategoryLabel = r.category.split(' ').slice(1).join(' ');
+                const noteHTML = r.note ? `<span class="note-text">${r.note}</span>` : '';[cite: 2]
+                const colorStyle = getHighlightStyle(r.category);[cite: 2]
+                const displayCategoryLabel = r.category.split(' ').slice(1).join(' ');[cite: 2]
 
                 listContainer.innerHTML += `
                     <div class="list-item">
@@ -590,89 +638,83 @@
                             <button class="btn-action" onclick="deleteRecord(${r.id})">🗑️</button>
                         </div>
                     </div>
-                `;
-            });
+                `;[cite: 2]
+            });[cite: 2]
 
-            totalContainer.innerText = totalThb.toLocaleString();
-            totalHkdContainer.innerText = totalHkd.toLocaleString();
+            totalContainer.innerText = totalThb.toLocaleString();[cite: 2]
+            totalHkdContainer.innerText = totalHkd.toLocaleString();[cite: 2]
 
-            Object.keys(catSumsThb).forEach(cat => {
+            Object.keys(catSumsThb).forEach(cat => {[cite: 2]
                 catTotalsContainer.innerHTML += `
                     <div class="cat-total-item">
                         <span class="cat-name">${cat.split(' ').slice(1).join(' ')}</span>
                         <span class="cat-num">฿${catSumsThb[cat].toLocaleString()}</span>
                     </div>
-                `;
-            });
-        }
+                `;[cite: 2]
+            });[cite: 2]
+        }[cite: 2]
 
-        // CSV 智慧匯出邏輯：Flights 和 Stay 不計算且不生成 Daily Total 行
-        function exportToCSV() {
-            if (records.length === 0) return alert("目前沒有可匯出的數據！");
-            let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
-            let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; 
+        // CSV 智慧匯出邏輯
+        function exportToCSV() {[cite: 2]
+            if (records.length === 0) return alert("目前沒有可匯出的數據！");[cite: 2]
+            let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);[cite: 2]
+            let csvContent = "\uFEFFDate,Category,Amount(THB),HKD(Est),Notes\n"; [cite: 2]
             
-            let lastIsoDate = "";
-            let dayTotalThb = 0, dayTotalHkd = 0; // 每日小計（不包含港幣直入項目）
-            let tripTotalThb = 0, tripTotalHkd = 0; // 全行程總計
+            let lastIsoDate = "";[cite: 2]
+            let dayTotalThb = 0, dayTotalHkd = 0; [cite: 2]
+            let tripTotalThb = 0, tripTotalHkd = 0; [cite: 2]
 
-            for (let i = 0; i < sortedRecords.length; i++) {
-                const r = sortedRecords[i];
-                const nextRecord = sortedRecords[i + 1];
+            for (let i = 0; i < sortedRecords.length; i++) {[cite: 2]
+                const r = sortedRecords[i];[cite: 2]
+                const nextRecord = sortedRecords[i + 1];[cite: 2]
 
-                const currentIsoDate = r.date;
-                let nextIsoDate = nextRecord ? nextRecord.date : null;
+                const currentIsoDate = r.date;[cite: 2]
+                let nextIsoDate = nextRecord ? nextRecord.date : null;[cite: 2]
 
-                const rawCategory = r.category.split(' ').slice(1).join(' ');
-                const category = rawCategory.includes(',') ? `"${rawCategory}"` : rawCategory;
-                const note = r.note && r.note.includes(',') ? `"${r.note}"` : (r.note || '');
+                const rawCategory = r.category.split(' ').slice(1).join(' ');[cite: 2]
+                const category = rawCategory.includes(',') ? `"${rawCategory}"` : rawCategory;[cite: 2]
+                const note = r.note && r.note.includes(',') ? `"${r.note}"` : (r.note || '');[cite: 2]
                 
-                let currentItemHkd = r.wasHkdInput ? r.wasHkdInput : Math.round(r.amount * globalFxRate);
-                let currentItemThb = r.amount;
+                let currentItemHkd = r.wasHkdInput ? r.wasHkdInput : Math.round(r.amount * globalFxRate);[cite: 2]
+                let currentItemThb = r.amount;[cite: 2]
 
-                let displayDate = (currentIsoDate !== lastIsoDate) ? currentIsoDate : "";
-                if(displayDate) lastIsoDate = currentIsoDate;
+                let displayDate = (currentIsoDate !== lastIsoDate) ? currentIsoDate : "";[cite: 2]
+                if(displayDate) lastIsoDate = currentIsoDate;[cite: 2]
                 
-                // 寫入一般交易行
-                csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
+                csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;[cite: 2]
 
-                // 核心分流：機票、酒店分開歸類，不計入 Daily Total 的每日小計
-                if (!checkIsHkdMode(r.category)) {
-                    dayTotalThb += currentItemThb;
-                    dayTotalHkd += currentItemHkd;
-                }
+                if (!checkIsHkdMode(r.category)) {[cite: 2]
+                    dayTotalThb += currentItemThb;[cite: 2]
+                    dayTotalHkd += currentItemHkd;[cite: 2]
+                }[cite: 2]
 
-                // 總行程大花費依然會全部包含
-                tripTotalThb += currentItemThb;
-                tripTotalHkd += currentItemHkd;
+                tripTotalThb += currentItemThb;[cite: 2]
+                tripTotalHkd += currentItemHkd;[cite: 2]
 
-                // 觸發當日小計 (當日期改變，或到最後一筆交易時)
-                if (!nextRecord || nextIsoDate !== currentIsoDate) {
-                    // 如果當天扣除 Flights/Stay 之後，一般消費累積大於 0，才打印 Daily Total
-                    if (dayTotalThb > 0) {
-                        csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
-                    }
-                    dayTotalThb = 0; 
-                    dayTotalHkd = 0;
-                }
+                if (!nextRecord || nextIsoDate !== currentIsoDate) {[cite: 2]
+                    if (dayTotalThb > 0) {[cite: 2]
+                        csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;[cite: 2]
+                    }[cite: 2]
+                    dayTotalThb = 0; [cite: 2]
+                    dayTotalHkd = 0;[cite: 2]
+                }[cite: 2]
                 
-                // 行程完結：打印大總計
-                if (!nextRecord) {
-                    csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;
-                }
-            }
+                if (!nextRecord) {[cite: 2]
+                    csvContent += `,Trip Total,฿${tripTotalThb},HK$${tripTotalHkd},\n`;[cite: 2]
+                }[cite: 2]
+            }[cite: 2]
             
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Trip_Budget_Report_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });[cite: 2]
+            const url = URL.createObjectURL(blob);[cite: 2]
+            const link = document.createElement("a");[cite: 2]
+            link.setAttribute("href", url);[cite: 2]
+            link.setAttribute("download", `Trip_Budget_Report_${new Date().toISOString().slice(0,10)}.csv`);[cite: 2]
+            document.body.appendChild(link);[cite: 2]
+            link.click();[cite: 2]
+            document.body.removeChild(link);[cite: 2]
+        }[cite: 2]
 
-        init();
+        init();[cite: 2]
     </script>
 </body>
 </html>
