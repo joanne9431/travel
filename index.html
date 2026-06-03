@@ -34,6 +34,8 @@
             --hl-tickets-txt: #16a085;
             --hl-trans: #ebf5fb;   
             --hl-trans-txt: #566573;
+            --hl-insurance: #eaf2f8;
+            --hl-insurance-txt: #2471a3;
         }
         
         body {
@@ -519,7 +521,9 @@
             if (category.includes("Dining")) return "background-color: var(--hl-dining); color: var(--hl-dining-txt);";
             if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
             if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
-            return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
+            if (category.includes("Transport")) return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
+            if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
+            return "background-color: var(--grey); color: var(--text);";
         }
 
         function renderRecords() {
