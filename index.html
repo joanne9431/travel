@@ -314,20 +314,9 @@
     </div>
 
     <script>
-        /***************************************************************************
-         * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
-         * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
-         * 2. 換預設匯率 -> 修改下方的 globalFxRate 數值
-         * 3. 換 HTML 版面符號 -> 請到上方 HTML 代碼中，搜尋「฿」並全部替換掉（如改為 €, $, ₩, ¥）
-         * 4. 特別注意 (日幣專用) -> 本程式的算法是 [外幣 * 匯率 = 港幣] (適合泰銖、美金、歐元等)。
-         * 如果你要換成「日圓」，請到下方的 renderRecords() 與 exportToCSV() 內，
-         * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
-         ***************************************************************************/
-
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
-        // 包含完整 7 項分類的基礎數據陣列
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
@@ -342,7 +331,6 @@
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        // 核心設定：定義 Flights, Stay, Insurance 屬於港幣直入模式
         function checkIsHkdMode(catName) {
             return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
         }
@@ -367,14 +355,14 @@
             document.getElementById('edit-date').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         }
 
+        // 修改這裡：移除 alert 提示彈窗
         function handleRateChange() {
             const rateInput = document.getElementById('fx-rate');
             let val = parseFloat(rateInput.value);
             if(isNaN(val) || val <= 0) val = 0.22;
             globalFxRate = val;
             localStorage.setItem('thb_fx_rate', globalFxRate);
-            alert(`匯率已成功修改！目前設定為 1 THB = ${globalFxRate} HKD`);
-            renderRecords(); 
+            renderRecords(); // 靜默更新所有歷史紀錄中的港幣換算金額
         }
 
         async function loadRecords() {
@@ -405,7 +393,6 @@
             const picker = document.getElementById('category-picker');
             picker.innerHTML = ''; 
             
-            // 建立上下二排的獨立 row 包裝器，強固固定版面配置
             let topRowHtml = '<div class="category-row top-row">';
             let bottomRowHtml = '<div class="category-row bottom-row">';
 
@@ -416,7 +403,6 @@
                 const icon = parts[0];
                 const label = parts.slice(1).join(' ');
 
-                // 核心改動：選取時動態套用與歷史紀錄一樣的淺底深字標籤色，且邊框改為與背景色一致
                 let customStyle = '';
                 if (isActive) {
                     let bgColor = 'var(--grey)';
@@ -440,7 +426,6 @@
                     </button>
                 `;
 
-                // 嚴格依照「上 3 下 4」將生成好的 HTML 按鈕推入對應的 row
                 if (cat === "✈️ Flights" || cat === "🏨 Stay" || cat === "🛡️ Insurance") {
                     topRowHtml += buttonHtml;
                 } else {
@@ -672,7 +657,6 @@
                 
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
-                // 核心分流：機票、酒店、保險排除在 Daily Total 之外
                 if (!checkIsHkdMode(r.category)) {
                     dayTotalThb += currentItemThb;
                     dayTotalHkd += currentItemHkd;
