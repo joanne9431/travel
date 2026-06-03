@@ -318,7 +318,7 @@
         let globalFxRate = 0.22;
         
         // 【參數：消費分類清單】
-        // 分類乾淨化，按鈕上不帶任何金額與幣別註記。格式須為："圖示[空格]名稱"。已完整包含 Insurance 項目。
+        // 分類乾淨化，按鈕上不帶任何金額與幣別註記。格式須為："圖示[空格]名稱"。
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
@@ -335,9 +335,9 @@
         let editingRecordId = null; 
 
         // 【參數與核心設定：定義「港幣直入」模式的分類項目】
-        // 這裡直接精準定義哪幾個分類屬於港幣模式。若未來有其他分類也想改為直接輸入港幣（如保險等），可在後面加上 || catName === "新分類"
+        // 這裡精準定義哪幾個分類屬於港幣模式。已依照要求將 Insurance 納入，與 Flights、Stay 行為一致。
         function checkIsHkdMode(catName) {
-            return catName === "✈️ Flights" || catName === "🏨 Stay";
+            return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
         }
 
         async function init() {
@@ -610,7 +610,7 @@
             });
         }
 
-        // CSV 智慧匯出邏輯：Flights 和 Stay 不計算且不生成 Daily Total 行
+        // CSV 智慧匯出邏輯：港幣直入項目不計算且不生成 Daily Total 行
         function exportToCSV() {
             if (records.length === 0) return alert("目前沒有可匯出的數據！");
             let sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
@@ -640,7 +640,7 @@
                 // 寫入一般交易行
                 csvContent += `${displayDate},${category},฿${currentItemThb},HK$${currentItemHkd},${note}\n`;
 
-                // 核心分流：機票、酒店分開歸類，不計入 Daily Total 的每日小計
+                // 核心分流：港幣直入項目不計入 Daily Total 的每日小計
                 if (!checkIsHkdMode(r.category)) {
                     dayTotalThb += currentItemThb;
                     dayTotalHkd += currentItemHkd;
@@ -652,7 +652,7 @@
 
                 // 觸發當日小計 (當日期改變，或到最後一筆交易時)
                 if (!nextRecord || nextIsoDate !== currentIsoDate) {
-                    // 如果當天扣除 Flights/Stay 之後，一般消費累積大於 0，才打印 Daily Total
+                    // 如果當天扣除港幣直入項目之後，一般消費累積大於 0，才打印 Daily Total
                     if (dayTotalThb > 0) {
                         csvContent += `,Daily Total,฿${dayTotalThb},HK$${dayTotalHkd},\n`;
                     }
