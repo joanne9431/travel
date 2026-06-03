@@ -21,7 +21,6 @@
             --text: #333333;       
             --grey: #e1e4e8;       
             
-            /* Highlight 顏色背景 */
             /* 🇹🇭 泰國主題專屬高辨識度色彩矩陣 🇹🇭 */
             
             /* ✈️ Flights：皇家泰航藍（優雅深藍配淡藍底） */
@@ -33,7 +32,6 @@
             --hl-stay-txt: #b7950b;
             
             /* 🛡️ Insurance：泰國傳統佛寺紅/國旗紅（醒目磚紅配粉紅底） */
-            --hl-insurance: #fdedd0;  /* 舊版 dining 顏色 */
             --hl-insurance: #f9ebea;
             --hl-insurance-txt: #922b21;
             
@@ -202,7 +200,6 @@
         .btn-save { background-color: var(--primary); color: white; margin-top: 6px; }
         .btn-backup { background-color: #566573; color: white; margin-top: 6px; }
         
-        /* 修改點：改為垂直佈局，內部再分上下兩排容器 */
         .category-picker {
             display: flex;
             flex-direction: column;
@@ -210,19 +207,16 @@
             margin: 8px 0;
         }
         
-        /* 分類排容器：讓內部按鈕橫向排滿 */
         .category-row {
             display: flex;
             gap: 6px;
             width: 100%;
         }
 
-        /* 上排 3 個按鈕，各佔 1/3 */
         .category-row.top-row .category-btn {
             flex: 1 1 calc(33.33% - 4px);
         }
 
-        /* 下排 4 個按鈕，各佔 1/4 */
         .category-row.bottom-row .category-btn {
             flex: 1 1 calc(25% - 4.5px);
         }
@@ -239,14 +233,14 @@
             gap: 2px;
             margin: 0;
             box-sizing: border-box;
+            transition: background-color 0.2s, border-color 0.2s, color 0.15s;
         }
         .category-btn .icon-label { font-size: 1.05rem; } 
         .category-btn .label { font-size: 0.75rem; font-weight: bold; } 
         
+        /* 方案 B 的 CSS 修改點：選取時強制將文字設為白色，具體顏色交給 JS 動態控管 */
         .category-btn.active {
-            background-color: #d35400;
-            border-color: var(--primary);
-            color: white;
+            color: white !important;
         }
         
         .edit-mode-indicator {
@@ -332,21 +326,9 @@
     </div>
 
     <script>
-        /***************************************************************************
-         * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
-         * * 如果這份網頁以後要改成「歐元版」或「日幣版」，請直接搜尋並修改以下對應參數：
-         * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
-         * 2. 換預設匯率 -> 修改下方的 globalFxRate 數值
-         * 3. 換 HTML 版面符號 -> 請到上方 HTML 代碼中，搜尋「฿」並全部替換掉（如改為 €, $, ₩, ¥）
-         * 4. 特別注意 (日幣專用) -> 本程式的算法是 [外幣 * 匯率 = 港幣] (適合泰銖、美金、歐元等)。
-         * 如果你要換成「日圓」，請到下方的 renderRecords() 與 exportToCSV() 內，
-         * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
-         ***************************************************************************/
-
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
-        // 分類清單定義
         let categories = [
             "✈️ Flights", 
             "🏨 Stay", 
@@ -361,7 +343,6 @@
         let selectedCategory = "";  
         let editingRecordId = null; 
 
-        // 核心設定：精準定義哪幾項屬於港幣直入模式
         function checkIsHkdMode(catName) {
             return catName === "✈️ Flights" || catName === "🏨 Stay" || catName === "🛡️ Insurance";
         }
@@ -420,29 +401,43 @@
             }
         }
 
-        // 修改點：按鈕分排渲染邏輯
+        // 方案 B 的核心 JavaScript 修改點：依選中狀態動態計算、渲染專屬的選取背景色
         function renderCategories() {
             const picker = document.getElementById('category-picker');
             picker.innerHTML = ''; 
             
-            // 建立上下兩排的 HTML 字串容器
             let topRowHtml = '<div class="category-row top-row">';
             let bottomRowHtml = '<div class="category-row bottom-row">';
 
             categories.forEach(cat => {
-                const isActive = (cat === selectedCategory) ? 'active' : '';
+                const isActive = (cat === selectedCategory);
+                const activeClass = isActive ? 'active' : '';
                 const parts = cat.split(' ');
                 const icon = parts[0];
                 const label = parts.slice(1).join(' ');
 
+                // 如果按鈕處於選取狀態 (Active)，在此處動態分配專屬的高彩度主體顏色標籤
+                let customStyle = '';
+                if (isActive) {
+                    let activeColor = 'var(--primary)'; // 備用預設安全色
+                    if (cat.includes("Flights")) activeColor = 'var(--hl-flights-txt)';
+                    if (cat.includes("Stay")) activeColor = 'var(--hl-stay-txt)';
+                    if (cat.includes("Insurance")) activeColor = 'var(--hl-insurance-txt)';
+                    if (cat.includes("Dining")) activeColor = 'var(--hl-dining-txt)';
+                    if (cat.includes("Shopping")) activeColor = 'var(--hl-shopping-txt)';
+                    if (cat.includes("Tickets")) activeColor = 'var(--hl-tickets-txt)';
+                    if (cat.includes("Transport")) activeColor = 'var(--hl-trans-txt)';
+                    
+                    customStyle = `style="background-color: ${activeColor}; border-color: ${activeColor};"`;
+                }
+
                 const buttonHtml = `
-                    <button type="button" class="category-btn ${isActive}" onclick="selectCategory('${cat}', this)">
+                    <button type="button" class="category-btn ${activeClass}" ${customStyle} onclick="selectCategory('${cat}', this)">
                         <span class="icon-label">${icon}</span>
                         <span class="label">${label}</span>
                     </button>
                 `;
 
-                // 依項目判定歸入上排還是下排
                 if (cat === "✈️ Flights" || cat === "🏨 Stay" || cat === "🛡️ Insurance") {
                     topRowHtml += buttonHtml;
                 } else {
@@ -453,17 +448,14 @@
             topRowHtml += '</div>';
             bottomRowHtml += '</div>';
 
-            // 將組裝好的上下兩排塞入主面板
             picker.innerHTML = topRowHtml + bottomRowHtml;
-            
             updatePlaceholder(selectedCategory);
         }
 
         function selectCategory(cat, btn) {
             selectedCategory = cat; 
-            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); 
-            btn.classList.add('active'); 
-            updatePlaceholder(cat);
+            // 重新呼叫渲染以刷新所有按鈕的選取顏色樣式
+            renderCategories(); 
         }
 
         function updatePlaceholder(cat) {
@@ -568,7 +560,9 @@
             if (category.includes("Shopping")) return "background-color: var(--hl-shopping); color: var(--hl-shopping-txt);";
             if (category.includes("Tickets")) return "background-color: var(--hl-tickets); color: var(--hl-tickets-txt);";
             if (category.includes("Insurance")) return "background-color: var(--hl-insurance); color: var(--hl-insurance-txt);";
-            return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
+            if (category.includes("Transport")) return "background-color: var(--hl-trans); color: var(--hl-trans-txt);";
+            
+            return "background-color: var(--grey); color: var(--text);";
         }
 
         function renderRecords() {
