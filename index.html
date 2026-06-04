@@ -96,12 +96,12 @@
             margin-top: 2px;
         }
         
-        /* 🛠️ 修正此處：將 padding 的左右從 12px 放大到 20px，並可稍微加寬 gap */
+        /* 🛠️ 修正此處：將右側 padding 縮小為 10px，讓灰色方塊右邊縮小進去 */
         .category-totals-box {
             display: flex;
             gap: 20px; 
             background: rgba(0, 0, 0, 0.03);
-            padding: 6px 20px; 
+            padding: 6px 10px 6px 20px; /* 上 6px, 右 10px, 下 6px, 左 20px */
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.01);
             width: auto; 
@@ -114,13 +114,13 @@
             gap: 4px; 
         }
         
-        /* 🛠️ 修正此處：加入 min-width: 75px; 確保內部文字欄位有足夠空間，進一步把方塊左右撐大 */
+        /* 🛠️ 修正此處：稍微調整 min-width 到 72px，讓右側內容整體更緊湊不空曠 */
         .cat-total-item {
             display: flex;
             flex-direction: column;
             font-size: 0.75rem;
             color: #555;
-            min-width: 75px; 
+            min-width: 72px; 
         }
         .cat-total-item .cat-name {
             color: #888;
@@ -326,16 +326,6 @@
     </div>
 
     <script>
-         /***************************************************************************
-         * 📢 【開發者備忘錄：下次如何快速換成其他國家貨幣？】
-         * * 如果這份網頁以後要改成「歐元版」或「日幣版」，請直接搜尋並修改以下對應參數：
-         * * 1. 換資料庫名稱 (避免和舊行程撞車) -> 修改下方的 DATA_FILE 字串
-         * 2. 換預設匯率 -> 修改下方的 globalFxRate 數值
-         * 3. 換 HTML 版面符號 -> 請到上方 HTML 代碼中，搜尋「฿」並全部替換掉（如改為 €, $, ₩, ¥）
-         * 4. 特別注意 (日幣專用) -> 本程式的算法是 [外幣 * 匯率 = 港幣] (適合泰銖、美金、歐元等)。
-         * 如果你要換成「日圓」，請到下方的 renderRecords() 與 exportToCSV() 內，
-         * 把 (r.amount * globalFxRate) 後面加上「 / 100 」，因為日幣習慣以百位數計算。
-         ***************************************************************************/
         const DATA_FILE = "travel_thb_records_v2.json";
         let globalFxRate = 0.22;
         
