@@ -68,15 +68,14 @@
         
         h2 { margin-top: 0; font-size: 0.9rem; color: #777; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         
-        /* 🛠️ 修正此處：改為 flex-start 靠左，並用 gap 精準設定與右邊方塊的間距 */
+        /* 🛠️ 修正此處：改為 flex-end 讓內部元件全部向右靠齊，並加大 gap 保持適當內部間距 */
         .dashboard-layout {
             display: flex;
-            justify-content: flex-start; 
+            justify-content: flex-end; 
             align-items: center;
-            gap: 25px; /* 您可以隨時調整這個像素值（例如 20px 或 30px）來改變兩者間距 */
+            gap: 40px; /* 您可以調整這個像素（如 30px 或 50px）來微調左區與右區的間距 */
         }
         
-        /* 🛠️ 修正此處：取消 flex: 1，改為不放大，緊貼內容 */
         .total-box {
             flex: 0 0 auto; 
             padding-left: 6px; 
