@@ -68,12 +68,12 @@
         
         h2 { margin-top: 0; font-size: 0.9rem; color: #777; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         
-        /* 🛠️ 修正此處：改為 flex-end 讓內部元件全部向右靠齊，並加大 gap 保持適當內部間距 */
+        /* 🛠️ 修正此處：改為 center，讓整個儀表板內容在螢幕水平正中央置中 */
         .dashboard-layout {
             display: flex;
-            justify-content: flex-end; 
+            justify-content: center; 
             align-items: center;
-            gap: 40px; /* 您可以調整這個像素（如 30px 或 50px）來微調左區與右區的間距 */
+            gap: 35px; /* 左側總額與右側分類區塊的間距，可依喜好調整大小 */
         }
         
         .total-box {
