@@ -68,15 +68,17 @@
         
         h2 { margin-top: 0; font-size: 0.9rem; color: #777; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         
+        /* 🛠️ 修正此處：改為 flex-start 靠左，並用 gap 精準設定與右邊方塊的間距 */
         .dashboard-layout {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start; 
             align-items: center;
-            gap: 10px;
+            gap: 25px; /* 您可以隨時調整這個像素值（例如 20px 或 30px）來改變兩者間距 */
         }
         
+        /* 🛠️ 修正此處：取消 flex: 1，改為不放大，緊貼內容 */
         .total-box {
-            flex: 1; 
+            flex: 0 0 auto; 
             padding-left: 6px; 
             text-align: left;
         }
@@ -95,22 +97,22 @@
             margin-top: 2px;
         }
         
-        /* 🛠️ 重構：改為 Flexbox 雙行包裝，寬度設為 auto，徹底乾淨地消滅右邊空位 */
+        /* 右側分類總支出外殼 */
         .category-totals-box {
             display: flex;
-            gap: 12px; /* 左右兩欄的間距 */
+            gap: 15px; 
             background: rgba(0, 0, 0, 0.03);
-            padding: 6px 10px;
+            padding: 6px 12px;
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.01);
-            width: auto; /* 寬度根據內容自動縮放 */
+            width: auto; 
         }
         
         /* 左直行與右直行 */
         .cat-totals-col {
             display: flex;
             flex-direction: column;
-            gap: 4px; /* 上下項目的間距 */
+            gap: 4px; 
         }
         
         .cat-total-item {
@@ -573,7 +575,6 @@
             let catSumsThb = {};
             categories.forEach(cat => { catSumsThb[cat] = 0; });
 
-            // 先行統計所有金額
             records.forEach(r => {
                 let currentItemHkd = (checkIsHkdMode(r.category) && r.wasHkdInput) ? r.wasHkdInput : Math.round(r.amount * globalFxRate);
                 let currentItemThb = r.amount;
@@ -617,11 +618,9 @@
             totalContainer.innerText = totalThb.toLocaleString();
             totalHkdContainer.innerText = totalHkd.toLocaleString();
 
-            // 🛠️ 拆分為獨立的左、右兩直欄 HTML 模板
             let leftColHtml = '<div class="cat-totals-col">';
             let rightColHtml = '<div class="cat-totals-col">';
 
-            // 左行項目：Flight -> Stay -> Insurance
             const leftOrder = ["✈️ Flights", "🏨 Stay", "🛡️ Insurance"];
             leftOrder.forEach(cat => {
                 const sum = catSumsThb[cat] || 0;
@@ -633,7 +632,6 @@
                 `;
             });
 
-            // 右行項目：Dining -> Shopping -> Tickets -> Transport
             const rightOrder = ["🍱 Dining", "🛍️ Shopping", "🎟️ Tickets", "🚌 Transport"];
             rightOrder.forEach(cat => {
                 const sum = catSumsThb[cat] || 0;
@@ -648,7 +646,6 @@
             leftColHtml += '</div>';
             rightColHtml += '</div>';
 
-            // 直接塞入，Flexbox 會將其並排，且外圍灰色方塊寬度會精準剛好，不留一絲多餘空位！
             catTotalsContainer.innerHTML = leftColHtml + rightColHtml;
         }
 
